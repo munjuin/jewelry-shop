@@ -5,6 +5,7 @@ const express = require('express');
 const app = express();
 const indexRouter = require('./routes/index')
 const db = require('./config/db');
+const authRoutes = require('./routes/authRoutes');
 
 // 서버 시작 시 간단한 쿼리 날려보기 (현재 시간 조회)
 db.query('SELECT NOW()', (err, res) => {
@@ -21,12 +22,17 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 app.use(express.static(path.join(__dirname, 'public')));
+// 1. Form 데이터(x-www-form-urlencoded) 처리
+app.use(express.urlencoded({ extended: true })); 
+// 2. JSON 데이터(AJAX 요청) 처리
+app.use(express.json());
 app.use((req, res, next)=>{
   res.locals.user = null;// ejs에서 user 변수 사용 가능(null로 초기화)
   next();
 });
 
 app.use('/', indexRouter);
+app.use('/', authRoutes);
 
 app.use((req, res, next)=>{
   res.status(404).send('페이지가 없습니다');
