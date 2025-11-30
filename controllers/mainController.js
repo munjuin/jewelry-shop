@@ -1,4 +1,4 @@
-const db = require('../models/db');
+const db = require('../config/db');
 
 // 홈 페이지를 렌더링하는 함수를 async로 변경
 exports.getHomePage = async (req, res) => { // 2. async 키워드 추가
