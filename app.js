@@ -17,11 +17,15 @@ db.query('SELECT NOW()', (err, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next)=>{
+  res.locals.user = null;// ejs에서 user 변수 사용 가능(null로 초기화)
+  next();
+});
+
 app.use('/', indexRouter);
 
 app.use((req, res, next)=>{
