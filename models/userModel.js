@@ -36,6 +36,16 @@ class User {
             throw error;
         }
     }
+static async findById(id) {
+        const queryText = `SELECT * FROM users WHERE id = $1`;
+        
+        try {
+            const result = await db.query(queryText, [id]);
+            return result.rows[0];
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = User;

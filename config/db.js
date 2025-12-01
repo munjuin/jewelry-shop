@@ -10,7 +10,10 @@ const pool = new Pool({
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT,
+    ssl: false // 로컬 환경에서 SSL 인증 없이 연결 허용
+        
 });
+
 
 // 2. 연결 이벤트 리스너 (로그용)
 pool.on('connect', () => {
