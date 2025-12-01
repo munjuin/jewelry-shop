@@ -81,13 +81,24 @@ exports.login = (req, res, next) => {
   })(req, res, next); // 미들웨어 내에서 미들웨어 호출
 };
 
-// 로그아웃 처리 (GET)
 exports.logout = (req, res, next) => {
-  req.logout((err) => { // Passport가 제공하는 로그아웃 함수
-      if (err) { return next(err); }
-      // 세션 파기 (선택사항, 깔끔한 로그아웃을 위해 권장)
-      req.session.destroy(() => {
-          res.redirect('/');
-      });
-  });
+    // 1. Passport 로그아웃 (req.user 비우기)
+    req.logout((err) => {
+        if (err) { return next(err); }
+
+        // 2. 세션 완전히 삭제 (DB에서도 삭제됨)
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('세션 삭제 실패:', err);
+                return res.status(500).send('로그아웃 중 오류가 발생했습니다.');
+            }
+            
+            // 3. 세션 쿠키 삭제 (클라이언트 측 쿠키 삭제)
+            // 'connect.sid'는 express-session의 기본 쿠키 이름입니다.
+            res.clearCookie('connect.sid'); 
+            
+            // 4. 메인으로 이동
+            res.redirect('/');
+        });
+    });
 };
