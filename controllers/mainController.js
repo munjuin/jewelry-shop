@@ -23,6 +23,8 @@ exports.getHomePage = async (req, res) => { // 2. async 키워드 추가
     // 뷰 렌더링 시 DB 결과를 함께 전달하여 뷰에서도 확인 가능하도록 처리
     res.render('index', { 
         title: pageTitle,
-        dbTime: dbTimeResult // DB 쿼리 결과를 뷰에 전달
+        dbTime: dbTimeResult, // DB 쿼리 결과를 뷰에 전달
+        user: req.user // 뷰에서 사용자 정보 접근 가능하도록 전달
+        
     });
 };
