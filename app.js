@@ -14,6 +14,7 @@ const indexRouter = require('./routes/index');
 const authRouter = require('./routes/authRoutes');
 const multer = require('./config/multer');
 const adminRoutes = require('./routes/adminRoutes');
+const productRoutes = require('./routes/productRoutes');
 
 // 서버 시작 시 간단한 쿼리 날려보기 (현재 시간 조회)
 db.query('SELECT NOW()', (err, res) => {
@@ -62,6 +63,7 @@ app.use(express.json());
 
 app.use('/', indexRouter);
 app.use('/', authRouter);
+app.use('/', productRoutes);
 app.use('/admin', adminRoutes);
 
 app.use((req, res, next) => {
