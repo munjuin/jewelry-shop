@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .detail-container { max-width: 1000px; margin: 40px auto; padding: 20px; display: flex; gap: 50px; }
+        
+        /* 왼쪽: 이미지 영역 */
+        .image-section { flex: 1; }
+        .main-image { width: 100%; height: 400px; object-fit: cover; border: 1px solid #eee; margin-bottom: 10px; }
+        .thumbnail-list { display: flex; gap: 10px; overflow-x: auto; }
+        .thumbnail { width: 80px; height: 80px; object-fit: cover; cursor: pointer; border: 1px solid #ddd; opacity: 0.6; }
+        .thumbnail:hover, .thumbnail.active { opacity: 1; border: 2px solid #333; }
+
+        /* 오른쪽: 정보 영역 */
+        .info-section { flex: 1; }
+        .product-title { font-size: 1.8rem; margin-bottom: 10px; }
+        .product-price { font-size: 1.5rem; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+        
+        .option-group { margin-bottom: 20px; }
+        .option-group label { display: block; font-weight: bold; margin-bottom: 8px; }
+        .form-select { width: 100%; padding: 10px; border: 1px solid #ddd; font-size: 1rem; }
+        
+        .quantity-control { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+        .quantity-input { width: 50px; text-align: center; padding: 5px; }
+
+        .total-price-box { background: #f9f9f9; padding: 20px; text-align: right; font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; }
+        .total-price { color: #d63031; font-size: 1.5rem; }
+
+        .btn-cart { width: 100%; padding: 15px; background: #333; color: white; border: none; font-size: 1.1rem; cursor: pointer; }
+        .btn-cart:hover { background: #555; }
+        .btn-cart:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="detail-container">
+        <div class="image-section">
+            <% if (images && images.length > 0) { %>
+                <img src="<%= images[0].image_url %>" id="mainImage" class="main-image">
+                <div class="thumbnail-list">
+                    <% images.forEach((img, index) => { %>
+                        <img src="<%= img.image_url %>" 
+                             class="thumbnail <%= index === 0 ? 'active' : '' %>" 
+                             onclick="changeImage(this.src, this)">
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <img src="/images/no-image.png" class="main-image">
+            <% } %>
+        </div>
+
+        <div class="info-section">
+            <h1 class="product-title"><%= product.name %></h1>
+            <div class="product-price">
+                ₩ <span id="basePrice"><%= product.price.toLocaleString() %></span>
+            </div>
+            <p style="color: #666; margin-bottom: 30px;"><%= product.description %></p>
+
+            <form action="/cart/add" method="POST">
+                <input type="hidden" name="product_id" value="<%= product.id %>">
+                
+                <div class="option-group">
+                    <label>옵션 선택 (필수)</label>
+                    <select name="product_option_id" id="optionSelect" class="form-select" required onchange="calculateTotal()">
+                        <option value="" data-extra="0" selected disabled>옵션을 선택해주세요</option>
+                        <% options.forEach(opt => { %>
+                            <option value="<%= opt.id %>" data-extra="<%= opt.extra_price %>" 
+                                    <%= opt.stock_quantity <= 0 ? 'disabled' : '' %>>
+                                <%= opt.option_name %> 
+                                (<% if(opt.extra_price > 0) { %>+<%= opt.extra_price.toLocaleString() %>원<% } else { %>추가금 없음<% } %>)
+                                <%= opt.stock_quantity <= 0 ? '[품절]' : '' %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="quantity-control">
+                    <label>수량</label>
+                    <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="99" class="quantity-input" onchange="calculateTotal()">
+                </div>
+
+                <div class="total-price-box">
+                    총 결제금액: <span id="totalPrice" class="total-price"><%= product.price.toLocaleString() %></span>원
+                </div>
+
+                <% if (product.status === 'SOLD_OUT') { %>
+                    <button type="button" class="btn-cart" disabled>품절된 상품입니다</button>
+                <% } else { %>
+                    <button type="submit" class="btn-cart">장바구니 담기</button>
+                <% } %>
+            </form>
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+
+    <script>
+        // 기본 가격 (서버에서 받은 값)
+        const basePrice = <%= product.price %>;
+
+        // 이미지 변경 함수
+        function changeImage(src, element) {
+            document.getElementById('mainImage').src = src;
+            // 썸네일 활성화 스타일 처리
+            document.querySelectorAll('.thumbnail').forEach(thumb => thumb.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // 가격 계산 함수
+        function calculateTotal() {
+            const quantity = parseInt(document.getElementById('quantityInput').value) || 1;
+            const select = document.getElementById('optionSelect');
+            
+            // 선택된 옵션의 추가금 가져오기 (data-extra 속성 활용)
+            const selectedOption = select.options[select.selectedIndex];
+            const extraPrice = parseInt(selectedOption.getAttribute('data-extra')) || 0;
+
+            // 총액 계산: (기본가 + 추가금) * 수량
+            const total = (basePrice + extraPrice) * quantity;
+
+            // 화면 업데이트 (콤마 찍기)
+            document.getElementById('totalPrice').innerText = total.toLocaleString();
+        }
+    </script>
+</body>
+</html>
