@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        /* 간단한 그리드 스타일 (나중에 public/css/style.css로 옮기는 것 추천) */
+        .shop-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        .category-filter { margin-bottom: 30px; text-align: center; }
+        .category-filter a { margin: 0 10px; text-decoration: none; color: #555; font-weight: bold; }
+        .category-filter a.active { color: #000; border-bottom: 2px solid #000; }
+
+        .product-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+            gap: 30px; 
+        }
+
+        .product-card { border: 1px solid #eee; border-radius: 8px; overflow: hidden; transition: transform 0.2s; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .img-wrapper { position: relative; width: 100%; height: 250px; background: #f9f9f9; }
+        .img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* 품절 오버레이 */
+        .sold-out-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.5rem; font-weight: bold;
+        }
+
+        .product-info { padding: 15px; text-align: center; }
+        .product-name { font-size: 1rem; margin: 10px 0; color: #333; text-decoration: none; display: block; }
+        .product-price { font-weight: bold; color: #000; }
+
+        .pagination { margin-top: 50px; text-align: center; }
+        .pagination a { 
+            display: inline-block; padding: 8px 16px; margin: 0 4px; 
+            border: 1px solid #ddd; color: #333; text-decoration: none; border-radius: 4px;
+        }
+        .pagination a.active { background-color: #333; color: white; border-color: #333; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="shop-container">
+        <h2>SHOP</h2>
+
+        <div class="category-filter">
+            <a href="/products?category=all" class="<%= currentCategory === 'all' ? 'active' : '' %>">ALL</a>
+            <a href="/products?category=ring" class="<%= currentCategory === 'ring' ? 'active' : '' %>">RING</a>
+            <a href="/products?category=necklace" class="<%= currentCategory === 'necklace' ? 'active' : '' %>">NECKLACE</a>
+            <a href="/products?category=earring" class="<%= currentCategory === 'earring' ? 'active' : '' %>">EARRING</a>
+        </div>
+
+        <div class="product-grid">
+            <% if (products.length > 0) { %>
+                <% products.forEach(product => { %>
+                    <div class="product-card">
+                        <div class="img-wrapper">
+                            <img src="<%= product.image_url || '/images/no-image.png' %>" alt="<%= product.name %>">
+                            
+                            <% if (product.status === 'SOLD_OUT') { %>
+                                <div class="sold-out-overlay">SOLD OUT</div>
+                            <% } %>
+                        </div>
+                        <div class="product-info">
+                            <a href="/products/<%= product.id %>" class="product-name"><%= product.name %></a>
+                            <div class="product-price">₩ <%= product.price.toLocaleString() %></div>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p style="text-align: center; grid-column: 1/-1;">등록된 상품이 없습니다.</p>
+            <% } %>
+        </div>
+
+        <div class="pagination">
+            <% for(let i = 1; i <= totalPages; i++) { %>
+                <a href="/products?page=<%= i %>&category=<%= currentCategory %>" 
+                   class="<%= currentPage == i ? 'active' : '' %>"><%= i %></a>
+            <% } %>
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>
