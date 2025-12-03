@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .admin-container { max-width: 800px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .option-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-submit { background-color: #333; color: white; padding: 15px; width: 100%; border: none; cursor: pointer; font-size: 16px; }
+        .btn-add { background-color: #eee; border: 1px solid #ddd; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <div class="admin-container">
+        <h2>🛍️ 상품 등록 (관리자)</h2>
+        
+        <form action="/admin/products" method="POST" enctype="multipart/form-data">
+            
+            <div class="form-group">
+                <label>상품명</label>
+                <input type="text" name="name" class="form-control" required placeholder="예: 14K 로즈골드 반지">
+            </div>
+
+            <div class="form-group">
+                <label>카테고리</label>
+                <select name="category" class="form-control">
+                    <option value="ring">반지 (Ring)</option>
+                    <option value="necklace">목걸이 (Necklace)</option>
+                    <option value="earring">귀걸이 (Earring)</option>
+                    <option value="bracelet">팔찌 (Bracelet)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>가격 (원)</label>
+                <input type="number" name="price" class="form-control" required placeholder="예: 150000">
+            </div>
+
+            <div class="form-group">
+                <label>상품 설명</label>
+                <textarea name="description" class="form-control" rows="5" placeholder="상품에 대한 상세한 설명을 적어주세요."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>상품 이미지 (다중 선택 가능)</label>
+                <input type="file" name="images" class="form-control" multiple accept="image/*" required>
+                <small style="color: gray;">* 첫 번째 이미지가 대표 이미지(썸네일)가 됩니다.</small>
+            </div>
+
+            <hr>
+
+            <div class="form-group">
+                <label>상품 옵션 (사이즈, 색상 등)</label>
+                <div id="option-container">
+                    <div class="option-row">
+                        <input type="text" name="option_name" placeholder="옵션명 (예: 12호)" required style="flex: 2;">
+                        <input type="number" name="extra_price" placeholder="추가금 (0원)" value="0" style="flex: 1;">
+                        <input type="number" name="stock_quantity" placeholder="재고" value="100" style="flex: 1;">
+                    </div>
+                </div>
+                <button type="button" class="btn-add" onclick="addOption()">+ 옵션 추가하기</button>
+            </div>
+
+            <button type="submit" class="btn-submit">상품 등록 완료</button>
+        </form>
+    </div>
+
+    <%- include('../partials/footer') %>
+
+    <script>
+        function addOption() {
+            const container = document.getElementById('option-container');
+            const div = document.createElement('div');
+            div.className = 'option-row';
+            div.innerHTML = `
+                <input type="text" name="option_name" placeholder="옵션명" required style="flex: 2;">
+                <input type="number" name="extra_price" placeholder="추가금" value="0" style="flex: 1;">
+                <input type="number" name="stock_quantity" placeholder="재고" value="100" style="flex: 1;">
+                <button type="button" onclick="this.parentElement.remove()" style="background:red; color:white; border:none; cursor:pointer;">X</button>
+            `;
+            container.appendChild(div);
+        }
+    </script>
+</body>
+</html>
