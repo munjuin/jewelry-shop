@@ -12,7 +12,8 @@ const passportConfig = require('./config/passport');
 
 const indexRouter = require('./routes/index');
 const authRouter = require('./routes/authRoutes');
-
+const multer = require('./config/multer');
+const adminRoutes = require('./routes/adminRoutes');
 
 // 서버 시작 시 간단한 쿼리 날려보기 (현재 시간 조회)
 db.query('SELECT NOW()', (err, res) => {
@@ -50,12 +51,18 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next)=>{
+  req.db = db;
+  next();
+})
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 app.use('/', indexRouter);
 app.use('/', authRouter);
+app.use('/admin', adminRoutes);
 
 app.use((req, res, next) => {
   res.status(404).send('404 Not Found');
