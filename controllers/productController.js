@@ -51,3 +51,38 @@ exports.getProducts = async (req, res) => {
         res.status(500).send('서버 오류가 발생했습니다.');
     }
 };
+
+exports.getProductDetail = async (req, res) => {
+    try {
+        const productId = req.params.id;
+
+        // 1. 상품 기본 정보 + 이미지 조회
+        // (대표 이미지뿐만 아니라 모든 이미지를 가져와야 함)
+        const productQuery = `SELECT * FROM products WHERE id = $1`;
+        const productResult = await req.db.query(productQuery, [productId]);
+        const product = productResult.rows[0];
+
+        if (!product) {
+            return res.status(404).send('상품을 찾을 수 없습니다.');
+        }
+
+        // 2. 관련 이미지 조회
+        const imagesQuery = `SELECT * FROM product_images WHERE product_id = $1 ORDER BY id ASC`;
+        const imagesResult = await req.db.query(imagesQuery, [productId]);
+
+        // 3. 관련 옵션 조회 (재고 있는 것만 보여주거나, 품절 표시 로직 가능)
+        const optionsQuery = `SELECT * FROM product_options WHERE product_id = $1 ORDER BY id ASC`;
+        const optionsResult = await req.db.query(optionsQuery, [productId]);
+        // 4. 뷰 렌더링
+        res.render('products/detail', {
+            title: product.name,
+            product: product,
+            images: imagesResult.rows,
+            options: optionsResult.rows
+        });
+
+    } catch (error) {
+        console.error('상품 상세 조회 오류:', error);
+        res.status(500).send('서버 오류가 발생했습니다.');
+    }
+};
