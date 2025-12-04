@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .complete-container { 
+            max-width: 600px; margin: 100px auto; padding: 40px; 
+            text-align: center; border: 1px solid #ddd; border-radius: 8px; 
+        }
+        .icon-check { font-size: 4rem; color: #2ecc71; margin-bottom: 20px; }
+        .order-number { font-size: 1.2rem; margin: 20px 0; font-weight: bold; background: #f9f9f9; padding: 10px; }
+        .btn-group { margin-top: 30px; }
+        .btn { padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 0 5px; }
+        .btn-home { background: #333; color: white; }
+        .btn-mypage { background: #eee; color: #333; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="complete-container">
+        <i class="fa-solid fa-circle-check icon-check"></i>
+        <h1>주문이 완료되었습니다!</h1>
+        <p>고객님의 주문이 성공적으로 접수되었습니다.</p>
+        
+        <div class="order-number">
+            주문번호: #<%= orderId %>
+        </div>
+
+        <p>입금 계좌: <strong>우리은행 1002-000-000000 (예금주: 주얼리샵)</strong></p>
+        <p style="font-size: 0.9rem; color: #666;">* 24시간 이내에 입금이 확인되지 않으면 주문이 취소될 수 있습니다.</p>
+
+        <div class="btn-group">
+            <a href="/" class="btn btn-home">홈으로</a>
+            <a href="/mypage/orders" class="btn btn-mypage">주문 내역 확인</a>
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>
