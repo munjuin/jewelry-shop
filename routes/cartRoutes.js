@@ -6,5 +6,7 @@ const { isAuthenticated } = require('../middlewares/authMiddleware'); // 인증 
 
 // 장바구니 담기 (로그인 필수)
 router.post('/cart/add', isAuthenticated, cartController.addToCart);
+// 장바구니 조회 (로그인 필수)
+router.get('/cart', isAuthenticated, cartController.getCartPage);
 
 module.exports = router;
