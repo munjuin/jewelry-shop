@@ -169,3 +169,84 @@ exports.getOrderComplete = async (req, res) => {
     // 보안상 내 주문인지 확인하는 로직이 필요하지만, MVP에서는 생략하고 간단히 렌더링
     res.render('orders/complete', { orderId });
 };
+
+// 내 주문 내역 조회 (GET /mypage/orders)
+exports.getOrderList = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const query = `
+            SELECT * FROM orders 
+            WHERE user_id = $1 
+            ORDER BY created_at DESC
+        `;
+        const result = await req.db.query(query, [userId]);
+
+        res.render('users/mypage-orders', {
+            title: '주문 내역',
+            orders: result.rows
+        });
+    } catch (error) {
+        console.error('주문 내역 조회 오류:', error);
+        res.status(500).send('오류가 발생했습니다.');
+    }
+};
+
+//  주문 취소 처리 (POST /orders/:id/cancel)
+exports.cancelOrder = async (req, res) => {
+    const userId = req.user.id;
+    const orderId = req.params.id;
+    const client = await req.db.pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // 1. 주문 조회 (내 주문이 맞는지, 취소 가능한 상태인지 확인)
+        const orderRes = await client.query(
+            `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
+            [orderId, userId]
+        );
+
+        if (orderRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).send('<script>alert("주문을 찾을 수 없습니다."); history.back();</script>');
+        }
+
+        const order = orderRes.rows[0];
+        if (order.status !== 'PENDING' && order.status !== 'PAID') {
+            await client.query('ROLLBACK');
+            return res.send('<script>alert("이미 배송 준비 중이거나 취소된 주문은 취소할 수 없습니다."); history.back();</script>');
+        }
+
+        // 2. 주문 상태 변경 ('CANCELLED')
+        await client.query(
+            `UPDATE orders SET status = 'CANCELLED' WHERE id = $1`, 
+            [orderId]
+        );
+
+        // 3. 재고 복구 (중요 logic)
+        // 주문했던 상품(order_items)들을 가져와서, 해당 옵션의 재고를 다시 (+) 해줍니다.
+        // 주의: order_items에는 option_id가 없으므로 option_snapshot(이름)과 product_id로 찾아야 합니다.
+        const itemsRes = await client.query(`SELECT * FROM order_items WHERE order_id = $1`, [orderId]);
+        const items = itemsRes.rows;
+
+        for (const item of items) {
+            // 옵션 이름과 상품 ID로 product_options 테이블의 ID를 찾아서 재고 증가
+            await client.query(`
+                UPDATE product_options 
+                SET stock_quantity = stock_quantity + $1 
+                WHERE product_id = $2 AND option_name = $3
+            `, [item.quantity, item.product_id, item.option_snapshot]);
+        }
+
+        await client.query('COMMIT');
+        res.send('<script>alert("주문이 취소되었습니다."); location.href="/mypage/orders";</script>');
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('주문 취소 오류:', error);
+        res.status(500).send('<script>alert("오류가 발생했습니다."); history.back();</script>');
+    } finally {
+        client.release();
+    }
+};

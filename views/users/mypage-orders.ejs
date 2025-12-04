@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .mypage-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .order-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .order-table th, .order-table td { padding: 15px; border-bottom: 1px solid #ddd; text-align: center; }
+        .order-table th { background: #f9f9f9; border-top: 2px solid #333; }
+        
+        .status-badge { padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .status-PENDING { background: #ffeaa7; color: #d35400; } /* 입금대기 */
+        .status-PAID { background: #55efc4; color: #00b894; }    /* 결제완료 */
+        .status-CANCELLED { background: #dfe6e9; color: #636e72; text-decoration: line-through; }
+        .status-SHIPPED { background: #74b9ff; color: #0984e3; }
+
+        .btn-cancel { background: #ff7675; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+        .btn-cancel:hover { background: #d63031; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="mypage-container">
+        <h2>📜 내 주문 내역</h2>
+
+        <% if (orders.length > 0) { %>
+            <table class="order-table">
+                <thead>
+                    <tr>
+                        <th>주문번호</th>
+                        <th>주문일자</th>
+                        <th>결제금액</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% orders.forEach(order => { %>
+                        <tr>
+                            <td>#<%= order.id %></td>
+                            <td><%= new Date(order.created_at).toLocaleDateString() %></td>
+                            <td style="font-weight: bold;">₩ <%= order.final_amount.toLocaleString() %></td>
+                            <td>
+                                <span class="status-badge status-<%= order.status %>">
+                                    <% if (order.status === 'PENDING') { %> 입금대기
+                                    <% } else if (order.status === 'PAID') { %> 결제완료
+                                    <% } else if (order.status === 'CANCELLED') { %> 취소됨
+                                    <% } else if (order.status === 'SHIPPED') { %> 배송중
+                                    <% } else { %> <%= order.status %> <% } %>
+                                </span>
+                            </td>
+                            <td>
+                                <% if (order.status === 'PENDING' || order.status === 'PAID') { %>
+                                    <form action="/orders/<%= order.id %>/cancel" method="POST" onsubmit="return confirm('정말 주문을 취소하시겠습니까?');">
+                                        <button type="submit" class="btn-cancel">주문 취소</button>
+                                    </form>
+                                <% } else if (order.status === 'CANCELLED') { %>
+                                    -
+                                <% } else { %>
+                                    <button disabled style="opacity: 0.5;">취소 불가</button>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <div style="text-align: center; padding: 50px; color: #888;">
+                <p>아직 주문 내역이 없습니다.</p>
+                <a href="/products" style="color: blue; text-decoration: underline;">쇼핑하러 가기</a>
+            </div>
+        <% } %>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>
