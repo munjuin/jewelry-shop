@@ -8,5 +8,9 @@ const { isAuthenticated } = require('../middlewares/authMiddleware'); // 인증 
 router.post('/cart/add', isAuthenticated, cartController.addToCart);
 // 장바구니 조회 (로그인 필수)
 router.get('/cart', isAuthenticated, cartController.getCartPage);
+// 수량 변경 API
+router.patch('/api/cart/:itemId', isAuthenticated, cartController.updateCartItem);
+// 삭제 API
+router.delete('/api/cart/:itemId', isAuthenticated, cartController.deleteCartItem);
 
 module.exports = router;

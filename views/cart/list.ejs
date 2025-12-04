@@ -3,32 +3,22 @@
 <head>
     <%- include('../partials/head') %>
     <style>
+        /* 기존 스타일 유지 */
         .cart-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
-        
         .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
         .cart-table th { background: #f9f9f9; padding: 15px; border-bottom: 2px solid #333; text-align: center; }
         .cart-table td { padding: 15px; border-bottom: 1px solid #ddd; vertical-align: middle; text-align: center; }
-        
         .item-info { display: flex; align-items: center; gap: 15px; text-align: left; }
         .item-img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
-        .item-details h4 { margin: 0 0 5px 0; font-size: 1rem; }
-        .item-option { font-size: 0.9rem; color: #666; }
-
-        .summary-box { 
-            background: #f8f9fa; padding: 30px; border-radius: 8px; 
-            text-align: right; margin-left: auto; width: 300px;
-        }
+        .summary-box { background: #f8f9fa; padding: 30px; border-radius: 8px; text-align: right; margin-left: auto; width: 300px; }
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1rem; }
         .summary-row.total { font-weight: bold; font-size: 1.3rem; border-top: 2px solid #ddd; padding-top: 15px; margin-top: 15px; color: #d63031; }
-
-        .btn-checkout { 
-            display: block; width: 100%; padding: 15px; margin-top: 20px;
-            background: #333; color: white; border: none; font-size: 1.1rem; cursor: pointer; text-align: center; text-decoration: none;
-        }
-        .btn-checkout:hover { background: #555; }
+        .btn-checkout { display: block; width: 100%; padding: 15px; margin-top: 20px; background: #333; color: white; border: none; font-size: 1.1rem; cursor: pointer; text-align: center; text-decoration: none; }
         
-        .empty-cart { text-align: center; padding: 50px; color: #777; }
-        .btn-shopping { display: inline-block; margin-top: 20px; padding: 10px 20px; border: 1px solid #333; color: #333; text-decoration: none; }
+        /* 수량 조절 버튼 스타일 */
+        .qty-box { display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .qty-btn { width: 30px; height: 30px; border: 1px solid #ddd; background: white; cursor: pointer; }
+        .qty-val { width: 40px; text-align: center; border: none; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -50,27 +40,29 @@
                 </thead>
                 <tbody>
                     <% cartItems.forEach(item => { %>
-                        <tr>
+                        <tr id="row-<%= item.item_id %>">
                             <td>
                                 <div class="item-info">
                                     <img src="<%= item.image_url || '/images/no-image.png' %>" class="item-img">
                                     <div class="item-details">
                                         <h4><%= item.product_name %></h4>
                                         <div class="item-option">
-                                            옵션: <%= item.option_name %> 
+                                            <%= item.option_name %> 
                                             <% if(item.extra_price > 0) { %>(+<%= item.extra_price.toLocaleString() %>)<% } %>
                                         </div>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <%= item.quantity %>개
+                                <div class="qty-box">
+                                    <button class="qty-btn" onclick="updateQuantity(<%= item.item_id %>, -1)">-</button>
+                                    <input type="text" class="qty-val" id="qty-<%= item.item_id %>" value="<%= item.quantity %>" readonly>
+                                    <button class="qty-btn" onclick="updateQuantity(<%= item.item_id %>, 1)">+</button>
+                                </div>
                             </td>
-                            <td>
-                                ₩ <%= (item.base_price + item.extra_price).toLocaleString() %>
-                            </td>
+                            <td>₩ <%= (item.base_price + item.extra_price).toLocaleString() %></td>
                             <td style="font-weight: bold;">
-                                ₩ <%= item.total_price.toLocaleString() %>
+                                ₩ <span id="total-<%= item.item_id %>"><%= item.total_price.toLocaleString() %></span>
                             </td>
                             <td>
                                 <button onclick="deleteItem(<%= item.item_id %>)" style="background:none; border:none; color:red; cursor:pointer;">삭제</button>
@@ -83,23 +75,18 @@
             <div class="summary-box">
                 <div class="summary-row">
                     <span>총 상품 금액</span>
-                    <span>₩ <%= totalProductPrice.toLocaleString() %></span>
+                    <span>₩ <span id="summary-product"><%= totalProductPrice.toLocaleString() %></span></span>
                 </div>
                 <div class="summary-row">
                     <span>배송비</span>
-                    <span>
-                        <% if (deliveryFee === 0) { %>
-                            무료
-                        <% } else { %>
-                            + ₩ <%= deliveryFee.toLocaleString() %>
-                        <% } %>
+                    <span id="summary-delivery">
+                        <% if (deliveryFee === 0) { %>무료<% } else { %>+ ₩ <%= deliveryFee.toLocaleString() %><% } %>
                     </span>
                 </div>
                 <div class="summary-row total">
                     <span>결제 예정 금액</span>
-                    <span>₩ <%= finalPrice.toLocaleString() %></span>
+                    <span>₩ <span id="summary-final"><%= finalPrice.toLocaleString() %></span></span>
                 </div>
-
                 <a href="/checkout" class="btn-checkout">주문하기</a>
             </div>
 
@@ -114,11 +101,87 @@
     <%- include('../partials/footer') %>
 
     <script>
-        // 삭제 기능은 다음 이슈에서 구현합니다. (임시 스크립트)
-        function deleteItem(itemId) {
-            if(confirm('정말 삭제하시겠습니까? (기능 구현 중)')) {
-                alert('다음 이슈에서 AJAX로 구현됩니다! ID: ' + itemId);
+        // 숫자 포맷팅 함수 (1000 -> "1,000")
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        // 1. 수량 변경 (AJAX)
+        async function updateQuantity(itemId, change) {
+            const qtyInput = document.getElementById(`qty-${itemId}`);
+            let newQty = parseInt(qtyInput.value) + change;
+
+            if (newQty < 1) {
+                alert("수량은 1개 이상이어야 합니다.");
+                return;
             }
+
+            try {
+                const response = await fetch(`/api/cart/${itemId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // DOM 업데이트
+                    qtyInput.value = newQty; // 입력창 숫자 변경
+                    document.getElementById(`total-${itemId}`).innerText = formatNumber(data.itemTotalPrice); // 개별 합계 변경
+                    updateSummary(data); // 우측 요약박스 변경
+                } else {
+                    const err = await response.json();
+                    alert(err.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("서버 통신 오류");
+            }
+        }
+
+        // 2. 항목 삭제 (AJAX)
+        async function deleteItem(itemId) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+
+            try {
+                const response = await fetch(`/api/cart/${itemId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // 해당 행(TR) 삭제
+                    document.getElementById(`row-${itemId}`).remove();
+                    updateSummary(data); // 요약박스 업데이트
+
+                    // 만약 장바구니가 비었다면 새로고침 (빈 화면 보여주기 위해)
+                    if (data.itemCount === 0) {
+                        location.reload(); 
+                    }
+                } else {
+                    const err = await response.json();
+                    alert(err.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("서버 통신 오류");
+            }
+        }
+
+        // 3. 요약 박스 업데이트 함수 (공통)
+        function updateSummary(data) {
+            document.getElementById('summary-product').innerText = formatNumber(data.totalProductPrice);
+            
+            const deliveryElem = document.getElementById('summary-delivery');
+            if (data.deliveryFee === 0) {
+                deliveryElem.innerText = "무료";
+            } else {
+                deliveryElem.innerText = "+ ₩ " + formatNumber(data.deliveryFee);
+            }
+
+            document.getElementById('summary-final').innerText = formatNumber(data.finalPrice);
         }
     </script>
 </body>
