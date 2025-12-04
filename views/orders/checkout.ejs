@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .checkout-container { max-width: 1000px; margin: 40px auto; padding: 20px; display: flex; gap: 40px; }
+        
+        /* 왼쪽: 배송지 입력 폼 */
+        .form-section { flex: 2; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        .address-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .btn-zipcode { background: #555; color: white; border: none; padding: 0 15px; cursor: pointer; }
+
+        /* 오른쪽: 결제 요약 */
+        .summary-section { flex: 1; background: #f9f9f9; padding: 30px; height: fit-content; border-radius: 8px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1rem; }
+        .summary-total { border-top: 2px solid #333; padding-top: 20px; margin-top: 20px; font-weight: bold; font-size: 1.2rem; color: #d63031; }
+        
+        .btn-order { width: 100%; padding: 15px; background: #d63031; color: white; border: none; font-size: 1.1rem; cursor: pointer; margin-top: 20px; }
+        .btn-order:hover { background: #b71c1c; }
+
+        .checkbox-label { font-weight: normal; font-size: 0.9rem; margin-left: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="checkout-container">
+        <div class="form-section">
+            <h2>📦 배송지 정보</h2>
+            <form action="/orders" method="POST" id="orderForm">
+                
+                <div class="form-group">
+                    <input type="checkbox" id="sameInfo" onchange="copyUserInfo()">
+                    <label for="sameInfo" style="display:inline;" class="checkbox-label">주문자 정보와 동일</label>
+                </div>
+
+                <div class="form-group">
+                    <label>수령인 이름</label>
+                    <input type="text" name="receiver_name" id="receiver_name" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>휴대폰 번호</label>
+                    <input type="text" name="receiver_phone" id="receiver_phone" class="form-control" placeholder="010-0000-0000" required>
+                </div>
+
+                <div class="form-group">
+                    <label>배송 주소</label>
+                    <div class="address-group">
+                        <input type="text" name="zipcode" id="zipcode" class="form-control" placeholder="우편번호" readonly required style="flex:1;">
+                        <button type="button" class="btn-zipcode" onclick="execDaumPostcode()">우편번호 찾기</button>
+                    </div>
+                    <input type="text" name="address" id="address" class="form-control" placeholder="기본 주소" readonly required style="margin-bottom: 10px;">
+                    <input type="text" name="detail_address" id="detail_address" class="form-control" placeholder="상세 주소를 입력해주세요" required>
+                </div>
+
+                <div class="form-group">
+                    <label>결제 수단</label>
+                    <select name="payment_method" class="form-control" disabled>
+                        <option value="bank" selected>무통장 입금 (가상)</option>
+                    </select>
+                </div>
+                
+                </form>
+        </div>
+
+        <div class="summary-section">
+            <h3>주문 요약</h3>
+            <div class="summary-row">
+                <span>총 상품 금액</span>
+                <span>₩ <%= totalProductPrice.toLocaleString() %></span>
+            </div>
+            <div class="summary-row">
+                <span>배송비</span>
+                <span><% if(deliveryFee === 0) { %>무료<% } else { %>+ ₩ 3,000<% } %></span>
+            </div>
+            <div class="summary-row summary-total">
+                <span>최종 결제 금액</span>
+                <span>₩ <%= finalPrice.toLocaleString() %></span>
+            </div>
+            
+            <button type="submit" form="orderForm" class="btn-order">결제하기</button>
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script>
+        // 1. 우편번호 찾기 팝업 띄우기
+        function execDaumPostcode() {
+            new daum.Postcode({
+                oncomplete: function(data) {
+                    // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
+                    
+                    var addr = ''; // 주소 변수
+
+                    // 사용자가 선택한 주소 타입에 따라 해당 주소 값을 가져온다.
+                    if (data.userSelectedType === 'R') { // 도로명 주소
+                        addr = data.roadAddress;
+                    } else { // 지번 주소
+                        addr = data.jibunAddress;
+                    }
+
+                    // 우편번호와 주소 정보를 해당 필드에 넣는다.
+                    document.getElementById('zipcode').value = data.zonecode;
+                    document.getElementById("address").value = addr;
+                    
+                    // 커서를 상세주소 필드로 이동한다.
+                    document.getElementById("detail_address").focus();
+                }
+            }).open();
+        }
+
+        // 2. 주문자 정보와 동일 체크 시 자동 입력
+        function copyUserInfo() {
+            const checkbox = document.getElementById('sameInfo');
+            const user = <%- JSON.stringify(user || {}) %>; // 서버에서 받은 user 객체
+
+            if (checkbox.checked) {
+                document.getElementById('receiver_name').value = user.name || '';
+                document.getElementById('receiver_phone').value = user.phone || '';
+                document.getElementById('zipcode').value = user.zipcode || '';
+                document.getElementById('address').value = user.address || '';
+                document.getElementById('detail_address').value = user.detail_address || '';
+            } else {
+                // 체크 해제 시 초기화
+                document.getElementById('receiver_name').value = '';
+                document.getElementById('receiver_phone').value = '';
+                document.getElementById('zipcode').value = '';
+                document.getElementById('address').value = '';
+                document.getElementById('detail_address').value = '';
+            }
+        }
+    </script>
+</body>
+</html>
