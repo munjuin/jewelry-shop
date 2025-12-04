@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .admin-container { max-width: 1200px; margin: 40px auto; padding: 20px; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .admin-table th, .admin-table td { padding: 12px; border-bottom: 1px solid #ddd; text-align: center; vertical-align: middle; }
+        .admin-table th { background: #333; color: white; }
+        
+        .form-select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        .form-input { padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 100px; }
+        .btn-update { padding: 5px 10px; background: #0984e3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-update:hover { background: #74b9ff; }
+        
+        /* 상태별 색상 (시각적 구분) */
+        .status-PENDING { color: #d35400; font-weight: bold; }
+        .status-PAID { color: #00b894; font-weight: bold; }
+        .status-SHIPPED { color: #0984e3; font-weight: bold; }
+        .status-CANCELLED { color: #aaa; text-decoration: line-through; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="admin-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>📦 관리자 주문 관리</h2>
+            <a href="/admin/products/new" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 4px;">+ 상품 등록하러 가기</a>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>주문일시</th>
+                        <th>주문자</th>
+                        <th>결제금액</th>
+                        <th>현재상태</th>
+                        <th>택배사</th>
+                        <th>송장번호</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (orders.length > 0) { %>
+                        <% orders.forEach(order => { %>
+                            <tr>
+                                <td>#<%= order.id %></td>
+                                <td><%= new Date(order.created_at).toLocaleString() %></td>
+                                <td>
+                                    <%= order.user_name %><br>
+                                    <span style="font-size: 0.8em; color: gray;"><%= order.email %></span>
+                                </td>
+                                <td>₩ <%= order.final_amount.toLocaleString() %></td>
+                                
+                                <form action="/admin/orders/<%= order.id %>/status" method="POST">
+                                    <td>
+                                        <select name="status" class="form-select status-<%= order.status %>">
+                                            <option value="PENDING" <%= order.status === 'PENDING' ? 'selected' : '' %>>입금대기</option>
+                                            <option value="PAID" <%= order.status === 'PAID' ? 'selected' : '' %>>결제완료</option>
+                                            <option value="PREPARING" <%= order.status === 'PREPARING' ? 'selected' : '' %>>배송준비</option>
+                                            <option value="SHIPPED" <%= order.status === 'SHIPPED' ? 'selected' : '' %>>배송중</option>
+                                            <option value="DELIVERED" <%= order.status === 'DELIVERED' ? 'selected' : '' %>>배송완료</option>
+                                            <option value="CANCELLED" <%= order.status === 'CANCELLED' ? 'selected' : '' %>>취소됨</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="courier" class="form-input" placeholder="택배사" value="<%= order.courier || '' %>">
+                                    </td>
+                                    <td>
+                                        <input type="text" name="tracking_number" class="form-input" placeholder="송장번호" value="<%= order.tracking_number || '' %>" style="width: 150px;">
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn-update">수정</button>
+                                    </td>
+                                </form>
+                                </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="8" style="padding: 50px;">접수된 주문이 없습니다.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>
