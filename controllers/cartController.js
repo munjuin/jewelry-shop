@@ -141,3 +141,127 @@ exports.getCartPage = async (req, res) => {
         res.status(500).send('장바구니를 불러오는 중 오류가 발생했습니다.');
     }
 };
+
+// [Helper] 현재 사용자의 장바구니 총액 재계산 함수 (중복 로직 제거용)
+const getCartTotals = async (userId, req) => {
+    const query = `
+        SELECT 
+            ci.quantity,
+            p.price AS base_price,
+            po.extra_price
+        FROM cart_items ci
+        JOIN carts c ON ci.cart_id = c.id
+        JOIN products p ON ci.product_id = p.id
+        JOIN product_options po ON ci.product_option_id = po.id
+        WHERE c.user_id = $1
+    `;
+    const result = await req.db.query(query, [userId]);
+    
+    let totalProductPrice = 0;
+    result.rows.forEach(item => {
+        totalProductPrice += (item.base_price + item.extra_price) * item.quantity;
+    });
+
+    let deliveryFee = (result.rows.length > 0 && totalProductPrice < 100000) ? 3000 : 0;
+    
+    return {
+        totalProductPrice,
+        deliveryFee,
+        finalPrice: totalProductPrice + deliveryFee,
+        itemCount: result.rows.length
+    };
+};
+
+// [추가] 장바구니 수량 변경 (PATCH /api/cart/:itemId)
+exports.updateCartItem = async (req, res) => {
+    const userId = req.user.id;
+    const itemId = req.params.itemId;
+    const { quantity } = req.body;
+
+    if (quantity < 1) {
+        return res.status(400).json({ message: '수량은 1개 이상이어야 합니다.' });
+    }
+
+    const client = await req.db.pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. 수량 업데이트
+        // (내 장바구니의 아이템인지 확인하는 로직 포함: USING 절 활용)
+        const updateQuery = `
+            UPDATE cart_items ci
+            SET quantity = $1
+            FROM carts c
+            WHERE ci.cart_id = c.id AND ci.id = $2 AND c.user_id = $3
+            RETURNING ci.product_id, ci.product_option_id
+        `;
+        const result = await client.query(updateQuery, [quantity, itemId, userId]);
+
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: '항목을 찾을 수 없거나 권한이 없습니다.' });
+        }
+
+        // 2. 해당 아이템의 개별 총액 계산 (화면 업데이트용)
+        // (상품 기본가 + 옵션가) 정보를 다시 가져옴
+        const priceQuery = `
+            SELECT (p.price + po.extra_price) as unit_price
+            FROM products p, product_options po
+            WHERE p.id = $1 AND po.id = $2
+        `;
+        const priceRes = await client.query(priceQuery, [result.rows[0].product_id, result.rows[0].product_option_id]);
+        const unitPrice = priceRes.rows[0].unit_price;
+        const itemTotalPrice = unitPrice * quantity;
+
+        await client.query('COMMIT');
+
+        // 3. 전체 총액 재계산
+        const totals = await getCartTotals(userId, req);
+
+        // 4. 응답 (아이템별 총액 + 전체 총액 정보)
+        res.json({
+            message: '수정되었습니다.',
+            itemTotalPrice,
+            ...totals
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(error);
+        res.status(500).json({ message: '서버 오류' });
+    } finally {
+        client.release();
+    }
+};
+
+// [추가] 장바구니 삭제 (DELETE /api/cart/:itemId)
+exports.deleteCartItem = async (req, res) => {
+    const userId = req.user.id;
+    const itemId = req.params.itemId;
+
+    try {
+        // 내 장바구니 항목만 삭제
+        const query = `
+            DELETE FROM cart_items ci
+            USING carts c
+            WHERE ci.cart_id = c.id AND ci.id = $1 AND c.user_id = $2
+        `;
+        const result = await req.db.query(query, [itemId, userId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: '삭제할 항목이 없습니다.' });
+        }
+
+        // 전체 총액 재계산
+        const totals = await getCartTotals(userId, req);
+
+        res.json({
+            message: '삭제되었습니다.',
+            ...totals
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: '서버 오류' });
+    }
+};
