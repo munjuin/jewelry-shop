@@ -71,3 +71,46 @@ exports.createProduct = async (req, res) => {
         client.release();
     }
 };
+
+// 관리자 주문 목록 조회 (GET /admin/orders)
+exports.getOrders = async (req, res) => {
+    try {
+        // 모든 주문을 최신순으로 조회 (사용자 정보 포함)
+        const query = `
+            SELECT o.*, u.email, u.name AS user_name 
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.id
+            ORDER BY o.created_at DESC
+        `;
+        const result = await req.db.query(query);
+
+        res.render('admin/order-list', {
+            title: '주문 관리',
+            orders: result.rows
+        });
+    } catch (error) {
+        console.error('관리자 주문 조회 오류:', error);
+        res.status(500).send('서버 오류');
+    }
+};
+
+// 주문 상태 및 송장번호 업데이트 (POST /admin/orders/:id/status)
+exports.updateOrderStatus = async (req, res) => {
+    const orderId = req.params.id;
+    const { status, courier, tracking_number } = req.body;
+
+    try {
+        // 상태, 택배사, 송장번호 업데이트
+        const query = `
+            UPDATE orders 
+            SET status = $1, courier = $2, tracking_number = $3
+            WHERE id = $4
+        `;
+        await req.db.query(query, [status, courier, tracking_number, orderId]);
+
+        res.send('<script>alert("주문 상태가 수정되었습니다."); location.href="/admin/orders";</script>');
+    } catch (error) {
+        console.error('주문 상태 변경 오류:', error);
+        res.status(500).send('<script>alert("오류가 발생했습니다."); history.back();</script>');
+    }
+};

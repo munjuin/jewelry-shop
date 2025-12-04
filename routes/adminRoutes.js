@@ -14,4 +14,10 @@ router.get('/products/new', adminController.getProductForm);
 // 'images'는 html input의 name 속성값, 10은 최대 파일 개수
 router.post('/products', upload.array('images', 10), adminController.createProduct);
 
+// [추가] 전체 주문 관리 페이지
+router.get('/orders', adminController.getOrders);
+
+// [추가] 주문 상태 변경 처리
+router.post('/orders/:id/status', adminController.updateOrderStatus);
+
 module.exports = router;
