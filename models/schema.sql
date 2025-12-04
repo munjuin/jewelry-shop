@@ -77,3 +77,28 @@ CREATE TABLE product_options (
     extra_price INTEGER DEFAULT 0,      -- 기본 가격에 더해질 추가금
     stock_quantity INTEGER DEFAULT 0    -- 옵션별 개별 재고 수량
 );
+
+-- 5. 장바구니 (Carts) -> Users 참조
+CREATE TABLE carts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. 장바구니 상세 (Cart Items) -> Carts, Products, Options 참조
+
+CREATE TABLE cart_items (
+    id SERIAL PRIMARY KEY,
+    cart_id INTEGER REFERENCES carts(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    product_option_id INTEGER REFERENCES product_options(id) ON DELETE CASCADE,
+    quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (cart_id, product_id, product_option_id)
+);
+
+
+
+
+
