@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .admin-container { max-width: 600px; margin: 40px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-control { width: 100%; padding: 10px; box-sizing: border-box; }
+        .btn-submit { width: 100%; padding: 15px; background: #333; color: white; border: none; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="admin-container">
+        <h2>✏️ 상품 수정</h2>
+        
+        <form action="/admin/products/<%= product.id %>/update" method="POST">
+            
+            <div class="form-group">
+                <label>상품명</label>
+                <input type="text" name="name" class="form-control" value="<%= product.name %>" required>
+            </div>
+
+            <div class="form-group">
+                <label>카테고리</label>
+                <select name="category" class="form-control">
+                    <option value="ring" <%= product.category === 'ring' ? 'selected' : '' %>>반지</option>
+                    <option value="necklace" <%= product.category === 'necklace' ? 'selected' : '' %>>목걸이</option>
+                    <option value="earring" <%= product.category === 'earring' ? 'selected' : '' %>>귀걸이</option>
+                    <option value="bracelet" <%= product.category === 'bracelet' ? 'selected' : '' %>>팔찌</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>가격</label>
+                <input type="number" name="price" class="form-control" value="<%= product.price %>" required>
+            </div>
+
+            <div class="form-group">
+                <label>판매 상태</label>
+                <select name="status" class="form-control">
+                    <option value="ON_SALE" <%= product.status === 'ON_SALE' ? 'selected' : '' %>>판매중 (ON_SALE)</option>
+                    <option value="SOLD_OUT" <%= product.status === 'SOLD_OUT' ? 'selected' : '' %>>품절 (SOLD_OUT)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>설명</label>
+                <textarea name="description" class="form-control" rows="5"><%= product.description %></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">수정 완료</button>
+            <a href="/admin/products" style="display:block; text-align:center; margin-top:10px; color:#666;">취소</a>
+        </form>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>

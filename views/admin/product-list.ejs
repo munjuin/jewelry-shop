@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .admin-container { max-width: 1200px; margin: 40px auto; padding: 20px; }
+        .product-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .product-table th, .product-table td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        .product-table th { background: #333; color: white; }
+        
+        .btn { padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 0.9rem; border: none; cursor: pointer; }
+        .btn-edit { background: #0984e3; color: white; }
+        .btn-delete { background: #d63031; color: white; }
+        .btn-new { background: #2ecc71; color: white; float: right; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="admin-container">
+        <h2>📦 관리자 상품 관리</h2>
+        <a href="/admin/products/new" class="btn btn-new">+ 상품 등록</a>
+
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>상품명</th>
+                    <th>가격</th>
+                    <th>카테고리</th>
+                    <th>상태</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (products.length > 0) { %>
+                    <% products.forEach(p => { %>
+                        <tr>
+                            <td><%= p.id %></td>
+                            <td style="text-align: left;"><%= p.name %></td>
+                            <td><%= p.price.toLocaleString() %>원</td>
+                            <td><%= p.category %></td>
+                            <td style="font-weight: bold; color: <%= p.status === 'SOLD_OUT' ? 'red' : 'green' %>">
+                                <%= p.status %>
+                            </td>
+                            <td>
+                                <a href="/admin/products/<%= p.id %>/edit" class="btn btn-edit">수정</a>
+                                
+                                <form action="/admin/products/<%= p.id %>/delete" method="POST" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.');">
+                                    <button type="submit" class="btn btn-delete">삭제</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="6">등록된 상품이 없습니다.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>
