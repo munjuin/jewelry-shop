@@ -9,7 +9,7 @@
             
             <% if (locals.user) { %>
                 <li><span>환영합니다, <strong><%= locals.user.name %></strong>님!</span></li>
-                <li><a href="/mypage">마이페이지</a></li>
+                <li><a href="/mypage/orders">마이페이지</a></li>
                 <li><a href="/logout">로그아웃</a></li>
             <% } else { %>
                 <li><a href="/login">로그인</a></li>
