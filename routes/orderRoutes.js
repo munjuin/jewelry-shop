@@ -13,4 +13,10 @@ router.post('/orders', isAuthenticated, orderController.createOrder);
 // 주문 완료 페이지 (GET)
 router.get('/orders/complete', isAuthenticated, orderController.getOrderComplete);
 
+// [추가] 내 주문 내역 조회
+router.get('/mypage/orders', isAuthenticated, orderController.getOrderList);
+
+// [추가] 주문 취소 요청
+router.post('/orders/:id/cancel', isAuthenticated, orderController.cancelOrder);
+
 module.exports = router;
