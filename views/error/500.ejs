@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <%- include('../partials/head') %>
+    <style>
+        .error-container { text-align: center; padding: 100px 20px; }
+        .error-code { font-size: 6rem; font-weight: bold; color: #333; margin: 0; }
+    </style>
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <main class="error-container">
+        <h1 class="error-code">500</h1>
+        <h2>Internal Server Error</h2>
+        <p>서비스 이용에 불편을 드려 죄송합니다.<br>잠시 후 다시 시도해 주세요.</p>
+        <br>
+        <a href="/" class="btn-home" style="padding: 10px 20px; background:#333; color:white; text-decoration:none; border-radius:4px;">홈으로</a>
+    </main>
+
+    <%- include('../partials/footer') %>
+</body>
+</html>

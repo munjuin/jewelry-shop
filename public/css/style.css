@@ -1,0 +1,25 @@
+/* 구글 폰트 적용 (Noto Sans KR) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+body {
+    font-family: 'Noto Sans KR', sans-serif; /* 폰트 변경 */
+    color: #333;
+    line-height: 1.6;
+}
+
+/* 버튼 공통 스타일 */
+button, .btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+button:hover, .btn:hover {
+    opacity: 0.8;
+}
+
+/* 링크 밑줄 제거 */
+a { text-decoration: none; color: inherit; }
+
+/* 테이블 스타일 정리 */
+table { width: 100%; border-collapse: collapse; }
+th { background-color: #f8f9fa; color: #333; font-weight: bold; }
+td { border-bottom: 1px solid #eee; }

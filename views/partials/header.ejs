@@ -16,6 +16,15 @@
                 <li><a href="/signup">회원가입</a></li>
             <% } %>
         </ul>
+        <ul class="nav-links">
+          <li><a href="/products">SHOP</a></li>
+            <% if (user) { %>
+              <% if (user.role === 'ADMIN') { %>
+                <li><a href="/admin/orders" style="color: #d63031; font-weight: bold;">ADMIN</a></li>
+              <% } %>
+              <li><a href="/cart"><i class="fa-solid fa-cart-shopping"></i> CART</a></li>
+            <% } %>
+        </ul>
     </nav>
 </header>
 <hr>

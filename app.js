@@ -71,7 +71,12 @@ app.use('/', orderRoutes);
 app.use('/admin', adminRoutes);
 
 app.use((req, res, next) => {
-  res.status(404).send('404 Not Found');
+    res.status(404).render('error/404', { title: 'Page Not Found' });
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack); // 서버 콘솔에는 에러 로그 출력
+    res.status(500).render('error/500', { title: 'Server Error' });
 });
 
 app.listen(PORT, () => {
