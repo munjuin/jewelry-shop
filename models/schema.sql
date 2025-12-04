@@ -98,6 +98,35 @@ CREATE TABLE cart_items (
     UNIQUE (cart_id, product_id, product_option_id)
 );
 
+-- 7. 주문 (Orders) -> Users 참조
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, 
+    total_amount INTEGER NOT NULL,      
+    delivery_fee INTEGER DEFAULT 0,     
+    final_amount INTEGER NOT NULL,      
+    status VARCHAR(20) DEFAULT 'PENDING' 
+        CHECK (status IN ('PENDING', 'PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED')),
+    receiver_name VARCHAR(100) NOT NULL,
+    receiver_phone VARCHAR(20) NOT NULL,
+    zipcode VARCHAR(10) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    detail_address VARCHAR(255) NOT NULL,
+    courier VARCHAR(50),                
+    tracking_number VARCHAR(100),       
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. 주문 상세 (Order Items) -> Orders, Products 참조
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL, 
+    option_snapshot VARCHAR(255),       
+    quantity INTEGER NOT NULL,
+    price_snapshot INTEGER NOT NULL     
+);
+
 
 
 
