@@ -1,7 +1,23 @@
--- 기존 테이블이 있다면 삭제 (초기화)
+-- ==========================================
+-- 1. 테이블 초기화 (DROP)
+-- ==========================================
+-- 의존성이 있는 테이블들을 안전하게 삭제합니다.
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS cart_items CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
+DROP TABLE IF EXISTS product_options CASCADE;
+DROP TABLE IF EXISTS product_images CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS session CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- 회원(Users) 테이블 생성
+
+-- ==========================================
+-- 2. 회원 및 인증 (Users & Session)
+-- ==========================================
+
+-- 2-1. 회원(Users) 테이블 생성
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,              -- 고유 ID (자동 증가)
     email VARCHAR(255) UNIQUE NOT NULL, -- 이메일 (중복 불가, 필수)
@@ -20,9 +36,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 가입일
 );
 
--- 1. 기존 테이블이 있다면 삭제
-DROP TABLE IF EXISTS session;
-
+-- 2-2. 세션(Session) 테이블 생성 (connect-pg-simple 호환)
 CREATE TABLE "session" (
   "sid" varchar NOT NULL COLLATE "default",
   "sess" json NOT NULL,
@@ -33,22 +47,14 @@ WITH (OIDS=FALSE);
 ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
 
 CREATE INDEX "IDX_session_expire" ON "session" ("expire");
-
-SELECT id, email, name, phone, created_at FROM users;
-select * from "users"
-
-
--- 3. 만료 시간을 기준으로 인덱스 생성 (성능 향상 및 관리 용이)
 CREATE INDEX IF NOT EXISTS session_expire_idx ON session (expire);
 
 
+-- ==========================================
+-- 3. 상품 관리 (Products)
+-- ==========================================
 
--- 1. 기존 테이블 초기화 (순서 중요: 자식부터 삭제)
-DROP TABLE IF EXISTS product_options CASCADE;
-DROP TABLE IF EXISTS product_images CASCADE;
-DROP TABLE IF EXISTS products CASCADE;
-
--- 2. 상품 (Products) 테이블 - 부모 테이블
+-- 3-1. 상품 (Products) 테이블 - 부모 테이블
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -59,8 +65,7 @@ CREATE TABLE products (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. 상품 이미지 (Product Images) - 다중 이미지 지원
--- 1개의 상품은 여러 개의 이미지를 가질 수 있음 (1:N)
+-- 3-2. 상품 이미지 (Product Images) - 다중 이미지 지원
 CREATE TABLE product_images (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE, -- 부모 상품 삭제 시 같이 삭제
@@ -68,8 +73,7 @@ CREATE TABLE product_images (
     is_thumbnail BOOLEAN DEFAULT FALSE -- true면 목록에 표시될 대표 이미지
 );
 
--- 4. 상품 옵션 (Product Options) - 재고 관리의 핵심
--- 1개의 상품은 여러 개의 옵션(사이즈/색상)을 가질 수 있음 (1:N)
+-- 3-3. 상품 옵션 (Product Options) - 재고 관리의 핵심
 CREATE TABLE product_options (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE, -- 부모 상품 삭제 시 같이 삭제
@@ -78,7 +82,12 @@ CREATE TABLE product_options (
     stock_quantity INTEGER DEFAULT 0    -- 옵션별 개별 재고 수량
 );
 
--- 5. 장바구니 (Carts) -> Users 참조
+
+-- ==========================================
+-- 4. 장바구니 (Carts)
+-- ==========================================
+
+-- 4-1. 장바구니 (Carts) -> Users 참조
 CREATE TABLE carts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -86,8 +95,7 @@ CREATE TABLE carts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. 장바구니 상세 (Cart Items) -> Carts, Products, Options 참조
-
+-- 4-2. 장바구니 상세 (Cart Items) -> Carts, Products, Options 참조
 CREATE TABLE cart_items (
     id SERIAL PRIMARY KEY,
     cart_id INTEGER REFERENCES carts(id) ON DELETE CASCADE,
@@ -98,7 +106,12 @@ CREATE TABLE cart_items (
     UNIQUE (cart_id, product_id, product_option_id)
 );
 
--- 7. 주문 (Orders) -> Users 참조
+
+-- ==========================================
+-- 5. 주문 및 결제 (Orders)
+-- ==========================================
+
+-- 5-1. 주문 (Orders) -> Users 참조
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, 
@@ -117,7 +130,7 @@ CREATE TABLE orders (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. 주문 상세 (Order Items) -> Orders, Products 참조
+-- 5-2. 주문 상세 (Order Items) -> Orders, Products 참조
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
@@ -126,8 +139,3 @@ CREATE TABLE order_items (
     quantity INTEGER NOT NULL,
     price_snapshot INTEGER NOT NULL     
 );
-
-
-
-
-
