@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. Node.js 앱 서비스
+  app:
+    build: .             # 현재 폴더의 Dockerfile을 사용해 빌드
+    container_name: jewelry-shop-app
+    ports:
+      - "3000:3000"      # 호스트포트:컨테이너포트 연결
+    environment:
+      - PORT=3000
+      - DB_HOST=db       # ★ 중요: localhost가 아니라 서비스 이름인 'db'를 사용해야 함
+      - DB_USER=postgres
+      - DB_PASSWORD=1234 # 로컬 DB 비밀번호와 동일하게 설정 (편의상)
+      - DB_NAME=jewelry_shop
+      - DB_PORT=5432
+      - PGSSLMODE=disable # 도커 내부 통신이므로 SSL 비활성화
+      # 아래 변수들은 .env 파일에서 값을 가져옴 (${변수명})
+      - SESSION_SECRET=${SESSION_SECRET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
+    depends_on:
+      - db               # db 서비스가 먼저 켜진 후 실행됨
+    restart: always
+
+  # 2. PostgreSQL DB 서비스
+  db:
+    image: postgres:14-alpine
+    container_name: jewelry-shop-db
+    ports:
+      - "5432:5432"      # 외부 접속을 위해 포트 개방
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=jewelry_shop
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # DB 데이터를 영구 보존하기 위한 볼륨 연결
+
+# 볼륨 정의
+volumes:
+  postgres_data:
