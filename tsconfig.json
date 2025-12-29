@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6",                          /* 컴파일될 JS 버전 */
+    "module": "CommonJS",                     /* 모듈 시스템 (Node.js 기본) */
+    "rootDir": "./src",                       /* 소스 파일이 위치할 폴더 */
+    "outDir": "./dist",                       /* 컴파일된 JS가 저장될 폴더 */
+    "strict": true,                           /* 모든 엄격한 타입 체크 활성화 */
+    "noImplicitAny": true,                    /* any 타입 사용 시 에러 발생 */
+    "esModuleInterop": true,                  /* ES6 모듈 사양을 준수하여 import 허용 */
+    "skipLibCheck": true,                     /* 라이브러리 타입 체크 생략 (빌드 속도 향상) */
+    "forceConsistentCasingInFileNames": true, /* 파일명 대소문자 구분 강제 */
+    "allowJs": true                           /* JS 파일도 포함 (단계적 마이그레이션 가능) */
+  },
+  "include": ["src/**/*"],                    /* 컴파일할 파일 범위 */
+  "exclude": ["node_modules", "dist"]         /* 제외할 파일 */
+}
