@@ -15,3 +15,10 @@ export interface ProductOption {
   color: string;
   stock: number;
 }
+
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  image_url: string;
+  is_thumbnail: boolean;
+}
