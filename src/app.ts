@@ -18,9 +18,11 @@ declare global {
   }
 }
 
+
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
-const db = require('./config/db');
+// const db = require('./config/db');
+import db from './config/db';
 const passport = require('passport');
 const passportConfig = require('./config/passport');
 
