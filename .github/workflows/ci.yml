@@ -1,48 +1,50 @@
-name: Node.js CI Pipeline # 1. 워크플로우 이름 (GitHub 화면에 표시됨)
+name: Jewelry Mall CI Pipeline
 
-# 2. 트리거 설정 (언제 실행할 것인가?)
 on:
   push:
-    branches: ["main", "develop"] # main이나 develop 브랜치에 코드가 푸시될 때 실행
+    branches: ["main", "develop", "feat/**"] # 개발 중인 모든 브랜치 포함
   pull_request:
-    branches: ["main", "develop"] # main이나 develop으로 향하는 PR이 생성될 때 실행
+    branches: ["main", "develop"]
 
-# 3. 작업 정의 (무엇을 할 것인가?)
 jobs:
-  build-and-test: # 작업의 ID (임의 지정 가능)
-    runs-on: ubuntu-latest # GitHub가 제공하는 리눅스 가상 컴퓨터에서 실행
+  build-and-test:
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [20.x] # 테스트할 Node.js 버전 (여러 개 지정 가능)
+        node-version: [20.x]
 
-    # 4. 단계별 실행 순서 (Steps)
     steps:
-      # (1) 내 코드 가져오기
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      # (2) Node.js 설치하기
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "npm" # npm 모듈 캐싱 (속도 향상)
+          cache: "npm"
 
-      # (3) 의존성 설치하기 (npm install과 유사하지만 더 엄격함)
       - name: Install Dependencies
         run: npm ci
-        # 주의: npm ci는 package-lock.json이 반드시 있어야 작동합니다.
+        # package-lock.json을 기준으로 깔끔하게 설치합니다.
 
-      # (4) 코드 스타일 검사 (Lint)
-      - name: Run Lint
-        run: npm run lint
+      # ✅ 1. TypeScript 빌드 테스트
+      # env.ts의 에러 방지를 위해 더미 환경변수를 주입합니다.
+      - name: Build TypeScript
+        run: npm run build
+        env:
+          SESSION_SECRET: "ci_test_secret"
+          AWS_ACCESS_KEY_ID: "ci_test_key"
+          AWS_SECRET_ACCESS_KEY: "ci_test_secret"
+          AWS_REGION: "us-east-1"
+          AWS_BUCKET_NAME: "test-bucket"
 
-      # (5) 테스트 실행 (Test) - 가장 중요!
+      # ✅ 2. 전체 테스트 실행 (Jest)
       - name: Run Test
-        run: npm run test
-
-    # (6) 빌드 테스트 (Build) - 선택 사항
-    # 현재는 프론트엔드 빌드나 컴파일 과정이 없으므로 생략해도 됩니다.
-    # - name: Run Build
-    #   run: npm run build --if-present
+        run: npm test
+        env:
+          SESSION_SECRET: "ci_test_secret"
+          AWS_ACCESS_KEY_ID: "ci_test_key"
+          AWS_SECRET_ACCESS_KEY: "ci_test_secret"
+          AWS_REGION: "us-east-1"
+          AWS_BUCKET_NAME: "test-bucket"

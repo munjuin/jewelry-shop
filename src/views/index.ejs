@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-  <link rel="stylesheet" href="/style.css">
+  <title><%= title %></title> <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
@@ -14,6 +13,22 @@
         <h1>환영합니다! 쥬얼리 쇼핑몰 메인 페이지입니다.</h1>
         <p>오늘의 추천 상품을 확인해보세요.</p>
         
+        <section class="product-list">
+            <% if (products && products.length > 0) { %>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                    <% products.forEach(product => { %>
+                        <div class="product-item" style="border: 1px solid #ddd; padding: 10px;">
+                            <h3><%= product.name %></h3>
+                            <p>가격: <%= product.price %>원</p>
+                            <a href="/products/<%= product.id %>">상세보기</a>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <p>등록된 상품이 없습니다.</p>
+            <% } %>
+        </section>
+
         <% if (locals.dbTime) { %>
             <p>DB Status: <%= dbTime %></p>
         <% } %>
