@@ -1,3 +1,6 @@
+// src/app.ts
+import 'reflect-metadata'; // ✅ TypeORM 데코레이터 인식을 위해 무조건 파일의 가장 첫 줄에 배치
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -5,44 +8,61 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { QueryResult } from 'pg';
 
-// 라이브러리 임포트 (타입 지원을 위해 import 사용)
 import session from 'express-session';
 const pgSession = require('connect-pg-simple')(session);
 import passport from 'passport';
 
-// 설정 및 라우터 임포트 (전부 import로 통일)
-import db from './config/db';
+// ✅ db 임포트 시, 기존 pool(db)과 신규 AppDataSource를 함께 가져옵니다.
+import db, { AppDataSource } from './config/db'; 
 import passportConfig from './config/passport';
 import mainRoutes from './routes/mainRoutes';
-import authRoutes from './routes/authRoutes'; // 이름 통일
+import authRoutes from './routes/authRoutes'; 
 import productRoutes from './routes/productRoutes';
-import adminRoutes from './routes/adminRoutes'; // ✅ require 제거
-import cartRoutes from './routes/cartRoutes';   // ✅ require 제거
-import orderRoutes from './routes/orderRoutes'; // ✅ require 제거
+import adminRoutes from './routes/adminRoutes'; 
+import cartRoutes from './routes/cartRoutes';   
+import orderRoutes from './routes/orderRoutes'; 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// DB 연결 확인용 인터페이스
 interface NowResult {
     now: Date;
 }
 
+// ---------------------------------------------------------
+// 1. 기존 pg Pool 연결 확인
+// ---------------------------------------------------------
 db.query('SELECT NOW()', (err: Error | null, res: QueryResult<NowResult>) => {
     if (err) {
-        console.error('❌ DB Connection Failed:', err.stack);
+        console.error('❌ DB Connection Failed (pg Pool):', err.stack);
         return;
     }
     if (res && res.rows.length > 0) {
-        console.log('✅ DB Connection Verified! Current Time:', res.rows[0].now);
+        console.log('✅ DB Connection Verified (pg Pool)! Current Time:', res.rows[0].now);
     }
 });
+
+db.query('SELECT 1', (err, res) => {
+  if (err) console.error('❌ 연결 실패:', err);
+  else console.log('✅ DB 연결 성공! 이제 DBeaver 새로고침 해보세요.');
+});
+
+// ---------------------------------------------------------
+// 2. 신규 TypeORM 엔진 연결 초기화
+// ---------------------------------------------------------
+AppDataSource.initialize()
+    .then(() => {
+        console.log('✅ TypeORM 신규 엔진 가동 성공!');
+    })
+    .catch((error) => {
+        console.error('❌ TypeORM 초기화 실패:', error);
+    });
 
 // 뷰 엔진 설정
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// 세션 설정
+// 세션 설정 (기존 db pool을 그대로 사용하므로 안전하게 호환됨)
 app.use(session({
     store: new pgSession({
         pool: db,
@@ -52,7 +72,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30일
+        maxAge: 30 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
     }
 }));
@@ -62,12 +82,13 @@ passportConfig(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
-// 전역 미들웨어: 유저 정보 및 DB 주입
+// 전역 미들웨어
 app.use((req, res, next) => {
     res.locals.user = req.user || null;
     next();
 });
 
+// 기존 하위 호환성을 위한 DB 주입 (차후 Repository 패턴 완료 시 제거 예정)
 app.use((req, res, next) => {
     req.db = db;
     next();
@@ -78,7 +99,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-// 🚀 라우터 연결 (이 부분이 이제 정상적으로 함수를 전달합니다)
+// 라우터 연결
 app.use('/', mainRoutes);
 app.use('/', authRoutes);
 app.use('/', productRoutes);
