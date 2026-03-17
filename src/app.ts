@@ -19,7 +19,7 @@ import mainRoutes from './routes/mainRoutes';
 import authRoutes from './routes/authRoutes'; 
 import productRoutes from './routes/productRoutes';
 import adminRoutes from './routes/adminRoutes'; 
-import cartRoutes from './routes/cartRoutes';   
+import cartRoutes from './routes/cartRoutes';
 import orderRoutes from './routes/orderRoutes'; 
 
 const app = express();
@@ -40,11 +40,6 @@ db.query('SELECT NOW()', (err: Error | null, res: QueryResult<NowResult>) => {
     if (res && res.rows.length > 0) {
         console.log('✅ DB Connection Verified (pg Pool)! Current Time:', res.rows[0].now);
     }
-});
-
-db.query('SELECT 1', (err, res) => {
-  if (err) console.error('❌ 연결 실패:', err);
-  else console.log('✅ DB 연결 성공! 이제 DBeaver 새로고침 해보세요.');
 });
 
 // ---------------------------------------------------------
