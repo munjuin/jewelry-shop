@@ -1,44 +1,45 @@
+// src/controllers/productController.ts
 import { Request, Response } from 'express';
-import { Product, ProductOption ,ProductImage } from '../types/product';
+import { AppDataSource } from '../config/db'; // TypeORM 연결 객체
+import { Product } from '../entities/Product'; // TypeORM 엔티티
+
+// Repository 가져오기
+const productRepository = AppDataSource.getRepository(Product);
 
 export const getProducts = async (req: Request, res: Response) => {
     try {
-        // 1. 쿼리 파라미터 처리 (명시적 타입 변환)
+        // 1. 쿼리 파라미터 처리
         const page = parseInt(req.query.page as string) || 1;
         const category = (req.query.category as string) || 'all';
         const limit = 12;
         const offset = (page - 1) * limit;
 
-        // 2. SQL 조건문 동적 생성
-        let whereClause = '';
-        let queryParams: any[] = [];
-        
-        if (category !== 'all') {
-            whereClause = 'WHERE p.category = $1';
-            queryParams.push(category);
-        }
+        // 2. 동적 조건 객체 생성 (category가 'all'이 아닐 때만 필터링 추가)
+        const whereCondition = category !== 'all' ? { category } : {};
 
-        // 3. 상품 목록 조회 (주인님의 Product 인터페이스 적용)
-        const listQuery = `
-            SELECT p.*, pi.image_url 
-            FROM products p
-            LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_thumbnail = true
-            ${whereClause}
-            ORDER BY p.created_at DESC
-            LIMIT ${limit} OFFSET ${offset}
-        `;
-        
-        const productsResult = await req.db.query<Product>(listQuery, queryParams);
+        // 3. 상품 목록 및 전체 개수 단일 쿼리로 조회 (findAndCount의 위력!)
+        const [products, totalItems] = await productRepository.findAndCount({
+            where: whereCondition,
+            relations: ['images'], // 이미지 테이블 JOIN
+            order: { created_at: 'DESC' },
+            skip: offset,  // OFFSET
+            take: limit,   // LIMIT
+        });
 
-        // 4. 전체 상품 수 조회
-        const countQuery = `SELECT COUNT(*) FROM products p ${whereClause}`;
-        const countResult = await req.db.query<{ count: string }>(countQuery, queryParams);
-        const totalItems = parseInt(countResult.rows[0].count);
         const totalPages = Math.ceil(totalItems / limit);
+
+        // 4. 기존 EJS 템플릿(p.image_url)과의 호환성을 위해 썸네일 이미지 추출
+        const formattedProducts = products.map(p => {
+            const thumbnail = p.images?.find(img => img.is_thumbnail);
+            return {
+                ...p,
+                image_url: thumbnail ? thumbnail.image_url : null
+            };
+        });
 
         res.render('products/list', { 
             title: 'Shop',
-            products: productsResult.rows,
+            products: formattedProducts,
             currentPage: page,
             totalPages: totalPages,
             currentCategory: category
@@ -52,30 +53,28 @@ export const getProducts = async (req: Request, res: Response) => {
 
 export const getProductDetail = async (req: Request, res: Response) => {
     try {
-        const productId = req.params.id;
+        const productId = parseInt(req.params.id);
 
-        // 1. 상품 기본 정보 조회
-        const productQuery = `SELECT * FROM products WHERE id = $1`;
-        const productResult = await req.db.query<Product>(productQuery, [productId]);
-        const product = productResult.rows[0];
+        // 1. 상품, 이미지, 옵션을 단 한 번의 호출로 모두 가져옴 (relations 옵션)
+        const product = await productRepository.findOne({
+            where: { id: productId },
+            relations: ['images', 'options'], // 기존 3번의 SQL 쿼리를 이거 한 줄로 대체!
+            order: {
+                images: { id: 'ASC' },
+                options: { id: 'ASC' }
+            }
+        });
 
         if (!product) {
             return res.status(404).send('상품을 찾을 수 없습니다.');
         }
 
-        // 2. 관련 이미지 조회
-        const imagesQuery = `SELECT * FROM product_images WHERE product_id = $1 ORDER BY id ASC`;
-        const imagesResult = await req.db.query<ProductImage>(imagesQuery, [productId]);
-
-        // 3. 관련 옵션 조회 (주인님의 ProductOption 인터페이스 적용)
-        const optionsQuery = `SELECT * FROM product_options WHERE product_id = $1 ORDER BY id ASC`;
-        const optionsResult = await req.db.query<ProductOption>(optionsQuery, [productId]);
-
+        // 2. 렌더링 (TypeORM이 images와 options 배열을 자동으로 채워줍니다)
         res.render('products/detail', {
             title: product.name,
             product: product,
-            images: imagesResult.rows,
-            options: optionsResult.rows
+            images: product.images,   
+            options: product.options  
         });
 
     } catch (error) {

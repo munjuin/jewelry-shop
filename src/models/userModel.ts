@@ -1,3 +1,4 @@
+//userModels.ts
 import db from '../config/db';
 import bcrypt from 'bcrypt';
 import { QueryResult } from 'pg';

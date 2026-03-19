@@ -1,3 +1,4 @@
+// authController.ts
 import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import User, { UserShape } from '../models/userModel';
