@@ -2,6 +2,14 @@
 import { Pool, PoolConfig } from 'pg';
 import { DataSource } from 'typeorm'; // ✅ TypeORM 임포트 추가
 import dotenv from 'dotenv';
+import { User } from '../entities/User';
+import { Product } from '../entities/Product';
+import { ProductOption } from '../entities/ProductOption';
+import { ProductImage } from '../entities/ProductImage';
+import { Cart } from '../entities/Cart';
+import { CartItem } from '../entities/CartItem';
+import { Order } from '../entities/Order';
+import { OrderItem } from '../entities/OrderItem';
 
 dotenv.config();
 
@@ -33,7 +41,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  entities: [__dirname + '/../entities/*.{js,ts}'], // 나중에 생성할 엔티티 경로
+  entities: [User, Product, ProductOption, ProductImage, Cart, CartItem, Order, OrderItem], // 나중에 생성할 엔티티 경로
   synchronize: true, // Entity 변경 시 스키마 자동 동기화 (개발용)
   logging: false,
 });

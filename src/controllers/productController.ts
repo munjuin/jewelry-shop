@@ -4,10 +4,10 @@ import { AppDataSource } from '../config/db'; // TypeORM 연결 객체
 import { Product } from '../entities/Product'; // TypeORM 엔티티
 
 // Repository 가져오기
-const productRepository = AppDataSource.getRepository(Product);
 
 export const getProducts = async (req: Request, res: Response) => {
-    try {
+  try {
+      const productRepository = AppDataSource.getRepository(Product);
         // 1. 쿼리 파라미터 처리
         const page = parseInt(req.query.page as string) || 1;
         const category = (req.query.category as string) || 'all';
@@ -53,6 +53,7 @@ export const getProducts = async (req: Request, res: Response) => {
 
 export const getProductDetail = async (req: Request, res: Response) => {
     try {
+        const productRepository = AppDataSource.getRepository(Product);
         const productId = parseInt(req.params.id);
 
         // 1. 상품, 이미지, 옵션을 단 한 번의 호출로 모두 가져옴 (relations 옵션)

@@ -7,8 +7,8 @@ import { ProductOption } from '../entities/ProductOption';
 import { Order } from '../entities/Order';
 import { S3File, ProductRequest } from '../types/admin'; // (기존 타입 유지)
 
-const productRepository = AppDataSource.getRepository(Product);
-const orderRepository = AppDataSource.getRepository(Order);
+// const productRepository = AppDataSource.getRepository(Product);
+// const orderRepository = AppDataSource.getRepository(Order);
 
 // 1. 상품 등록 페이지 렌더링
 export const getProductForm = (req: Request, res: Response) => {
@@ -71,6 +71,8 @@ export const createProduct = async (req: Request, res: Response) => {
 
 // 3. 관리자 주문 목록 조회 (🔥 LEFT JOIN을 relations 하나로 압축)
 export const getOrders = async (req: Request, res: Response) => {
+  const orderRepository = AppDataSource.getRepository(Order);
+
     try {
         const orders = await orderRepository.find({
             relations: ['user'], // Users 테이블 자동 JOIN
@@ -95,6 +97,8 @@ export const getOrders = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status, courier, tracking_number } = req.body;
+    const orderRepository = AppDataSource.getRepository(Order);
+
 
     try {
         // 단일 쿼리로 빠르고 가볍게 업데이트
@@ -111,6 +115,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
 // 5. 상품 삭제 (Cascade 옵션 덕분에 연관된 옵션, 이미지, 장바구니 아이템 자동 삭제)
 export const deleteProduct = async (req: Request, res: Response) => {
+    const productRepository = AppDataSource.getRepository(Product);
+
     try {
         await productRepository.delete(req.params.id);
         res.redirect('/admin/products?status=deleted');
