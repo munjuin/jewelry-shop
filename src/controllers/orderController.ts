@@ -1,32 +1,41 @@
+// src/controllers/orderController.ts
 import { Request, Response } from 'express';
-import { PoolClient } from 'pg';
-import { OrderShape, OrderItemShape } from '../types/order';
+import { AppDataSource } from '../config/db';
+import { Order } from '../entities/Order';
+import { OrderItem } from '../entities/OrderItem';
+import { Cart } from '../entities/Cart';
+import { CartItem } from '../entities/CartItem';
+import { ProductOption } from '../entities/ProductOption';
 
-// 주문서 작성 페이지
+// 레포지토리 초기화
+const orderRepository = AppDataSource.getRepository(Order);
+
+// 1. 주문서 작성 페이지
 export const getCheckoutPage = async (req: Request, res: Response) => {
-    const userId = req.user!.id; // isAuthenticated 미들웨어가 있으므로 ! 사용
+    const userId = req.user!.id as number;
 
     try {
-        const query = `
-            SELECT ci.quantity, p.name AS product_name, p.price AS base_price,
-                   po.option_name, po.extra_price
-            FROM cart_items ci
-            JOIN products p ON ci.product_id = p.id
-            JOIN product_options po ON ci.product_option_id = po.id
-            JOIN carts c ON ci.cart_id = c.id
-            WHERE c.user_id = $1
-        `;
-        
-        const result = await req.db.query(query, [userId]);
-        const cartItems = result.rows;
+        const cart = await AppDataSource.getRepository(Cart).findOne({
+            where: { user: { id: userId } },
+            relations: ['items', 'items.product', 'items.productOption']
+        });
 
-        if (cartItems.length === 0) {
+        if (!cart || cart.items.length === 0) {
             return res.send('<script>alert("장바구니가 비어있습니다."); location.href="/products";</script>');
         }
 
         let totalProductPrice = 0;
-        cartItems.forEach((item: any) => {
-            totalProductPrice += (item.base_price + item.extra_price) * item.quantity;
+        
+        // 기존 EJS 템플릿 호환성을 위한 데이터 매핑
+        const cartItems = cart.items.map(item => {
+            totalProductPrice += (item.product.price + item.productOption.extra_price) * item.quantity;
+            return {
+                quantity: item.quantity,
+                product_name: item.product.name,
+                base_price: item.product.price,
+                option_name: item.productOption.option_name,
+                extra_price: item.productOption.extra_price
+            };
         });
 
         const deliveryFee = (totalProductPrice < 100000) ? 3000 : 0;
@@ -45,130 +54,154 @@ export const getCheckoutPage = async (req: Request, res: Response) => {
     }
 };
 
-// 주문 생성 (트랜잭션 포함)
+// 2. 주문 생성 (🔥 완벽하게 캡슐화된 TypeORM 트랜잭션)
 export const createOrder = async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.user!.id as number;
     const { receiver_name, receiver_phone, zipcode, address, detail_address } = req.body;
 
-    const client: PoolClient = await req.db.connect();
-
     try {
-        const cartQuery = `
-            SELECT ci.product_id, ci.product_option_id, ci.quantity,
-                   p.price AS base_price, po.extra_price, po.option_name, po.stock_quantity
-            FROM cart_items ci
-            JOIN products p ON ci.product_id = p.id
-            JOIN product_options po ON ci.product_option_id = po.id
-            JOIN carts c ON ci.cart_id = c.id
-            WHERE c.user_id = $1
-        `;
-        const cartRes = await client.query(cartQuery, [userId]);
-        const cartItems = cartRes.rows;
+        let createdOrderId: number;
 
-        if (cartItems.length === 0) {
+        // 트랜잭션 블록 시작: 이 안에서 에러가 발생하면 모든 것이 자동 ROLLBACK 됩니다.
+        await AppDataSource.transaction(async (manager) => {
+            const cart = await manager.findOne(Cart, {
+                where: { user: { id: userId } },
+                relations: ['items', 'items.product', 'items.productOption']
+            });
+
+            if (!cart || cart.items.length === 0) {
+                throw new Error('EMPTY_CART');
+            }
+
+            // 재고 검증 및 총액 계산
+            let totalAmount = 0;
+            for (const item of cart.items) {
+                if (item.productOption.stock_quantity < item.quantity) {
+                    // 재고가 부족하면 즉시 커스텀 에러를 던져 트랜잭션을 파기합니다.
+                    throw new Error(`STOCK_SHORTAGE|${item.productOption.option_name}`);
+                }
+                totalAmount += (item.product.price + item.productOption.extra_price) * item.quantity;
+            }
+
+            const deliveryFee = (totalAmount < 100000) ? 3000 : 0;
+            const finalAmount = totalAmount + deliveryFee;
+
+            // 1) 주문 생성
+            const order = manager.create(Order, {
+                user: { id: userId },
+                total_amount: totalAmount,
+                delivery_fee: deliveryFee,
+                final_amount: finalAmount,
+                receiver_name,
+                receiver_phone,
+                zipcode,
+                address,
+                detail_address,
+                status: 'PAID'
+            });
+            await manager.save(order);
+            createdOrderId = order.id;
+
+            // 2) 주문 상세 내역 저장 및 재고 차감 처리
+            for (const item of cart.items) {
+                const priceSnapshot = item.product.price + item.productOption.extra_price;
+
+                // 스냅샷 저장
+                const orderItem = manager.create(OrderItem, {
+                    order: { id: order.id },
+                    product: { id: item.product.id },
+                    option_snapshot: item.productOption.option_name,
+                    quantity: item.quantity,
+                    price_snapshot: priceSnapshot
+                });
+                await manager.save(orderItem);
+
+                // 재고 차감
+                item.productOption.stock_quantity -= item.quantity;
+                await manager.save(item.productOption);
+            }
+
+            // 3) 장바구니 비우기
+            await manager.remove(CartItem, cart.items);
+        });
+
+        // 트랜잭션이 성공적으로 끝나면 COMMIT 완료 상태
+        res.redirect(`/orders/complete?id=${createdOrderId!}`);
+
+    } catch (error: any) {
+        console.error('주문 생성 트랜잭션 오류:', error);
+        
+        // 에러 메세지에 따른 맞춤형 사용자 응답 분기 처리
+        if (error.message === 'EMPTY_CART') {
             return res.send('<script>alert("장바구니가 비어있습니다."); location.href="/products";</script>');
         }
-
-        // 재고 검증 및 금액 계산
-        let totalAmount = 0;
-        for (const item of cartItems) {
-            if (item.stock_quantity < item.quantity) {
-                client.release();
-                return res.send(`<script>alert("재고가 부족합니다: ${item.option_name}"); history.back();</script>`);
-            }
-            totalAmount += (item.base_price + item.extra_price) * item.quantity;
+        if (error.message.startsWith('STOCK_SHORTAGE')) {
+            const optionName = error.message.split('|')[1];
+            return res.send(`<script>alert("재고가 부족합니다: ${optionName}"); history.back();</script>`);
         }
-
-        const deliveryFee = (totalAmount < 100000) ? 3000 : 0;
-        const finalAmount = totalAmount + deliveryFee;
-
-        // 트랜잭션 시작
-        await client.query('BEGIN');
-
-        const orderInsert = `
-            INSERT INTO orders (user_id, total_amount, delivery_fee, final_amount, receiver_name, receiver_phone, zipcode, address, detail_address, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PAID') RETURNING id
-        `;
-        const orderRes = await client.query<OrderShape>(orderInsert, [
-            userId, totalAmount, deliveryFee, finalAmount, receiver_name, receiver_phone, zipcode, address, detail_address
-        ]);
-        const orderId = orderRes.rows[0].id;
-
-        for (const item of cartItems) {
-            const priceSnapshot = item.base_price + item.extra_price;
-            
-            // 주문 상세 저장
-            await client.query(
-                `INSERT INTO order_items (order_id, product_id, option_snapshot, quantity, price_snapshot) VALUES ($1, $2, $3, $4, $5)`,
-                [orderId, item.product_id, item.option_name, item.quantity, priceSnapshot]
-            );
-
-            // 재고 차감
-            await client.query(
-                `UPDATE product_options SET stock_quantity = stock_quantity - $1 WHERE id = $2`,
-                [item.quantity, item.product_option_id]
-            );
-        }
-
-        // 장바구니 비우기
-        await client.query(`DELETE FROM cart_items WHERE cart_id = (SELECT id FROM carts WHERE user_id = $1)`, [userId]);
-
-        await client.query('COMMIT');
-        res.redirect(`/orders/complete?id=${orderId}`);
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('주문 생성 오류:', error);
-        res.status(500).send('<script>alert("오류가 발생했습니다."); history.back();</script>');
-    } finally {
-        client.release();
+        
+        res.status(500).send('<script>alert("주문 처리 중 오류가 발생했습니다."); history.back();</script>');
     }
 };
 
-// 주문 내역 조회
+// 3. 주문 내역 조회
 export const getOrderList = async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.user!.id as number;
     try {
-        const result = await req.db.query<OrderShape>(
-            'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC', 
-            [userId]
-        );
-        res.render('users/mypage-orders', { title: '주문 내역', orders: result.rows });
+        const orders = await orderRepository.find({
+            where: { user: { id: userId } },
+            order: { created_at: 'DESC' }
+        });
+        res.render('users/mypage-orders', { title: '주문 내역', orders });
     } catch (error) {
         res.status(500).send('오류가 발생했습니다.');
     }
 };
 
-// 주문 취소 로직
+// 4. 주문 취소 로직 (🔥 TypeORM 트랜잭션)
 export const cancelOrder = async (req: Request, res: Response) => {
     const userId = req.user!.id as number;
-    const orderId = req.params.id;
-    const client: PoolClient = await req.db.connect();
+    const orderId = parseInt(req.params.id);
 
     try {
-        await client.query('BEGIN');
-        const orderRes = await client.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [orderId, userId]);
-        if (orderRes.rowCount === 0) throw new Error('NOT_FOUND');
+        await AppDataSource.transaction(async (manager) => {
+            const order = await manager.findOne(Order, {
+                where: { id: orderId, user: { id: userId } },
+                relations: ['items', 'items.product']
+            });
 
-        await client.query("UPDATE orders SET status = 'CANCELLED' WHERE id = $1", [orderId]);
-        
-        const itemsRes = await client.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
-        for (const item of itemsRes.rows) {
-            await client.query(
-                `UPDATE product_options SET stock_quantity = stock_quantity + $1 WHERE product_id = $2 AND option_name = $3`,
-                [item.quantity, item.product_id, item.option_snapshot]
-            );
-        }
-        await client.query('COMMIT');
-        // ✅ 표준 리다이렉트
+            if (!order) throw new Error('NOT_FOUND');
+            if (order.status === 'CANCELLED') throw new Error('ALREADY_CANCELLED');
+
+            // 1) 상태 변경
+            order.status = 'CANCELLED';
+            await manager.save(order);
+
+            // 2) 재고 복구 (결제 시점의 option_snapshot을 바탕으로 실제 옵션을 찾아 복구)
+            for (const item of order.items) {
+                // 상품과 옵션명을 기준으로 원본 ProductOption 엔티티를 찾습니다.
+                const option = await manager.findOne(ProductOption, {
+                    where: { 
+                        product: { id: item.product.id }, 
+                        option_name: item.option_snapshot 
+                    }
+                });
+
+                if (option) {
+                    option.stock_quantity += item.quantity;
+                    await manager.save(option);
+                }
+            }
+        });
+
         res.redirect('/mypage/orders');
     } catch (error) {
-        await client.query('ROLLBACK');
-        res.status(500).send('취소 실패');
-    } finally {
-        client.release();
+        console.error('주문 취소 트랜잭션 오류:', error);
+        res.status(500).send('주문 취소에 실패했습니다.');
     }
 };
 
+// 5. 주문 완료 페이지
 export const getOrderComplete = (req: Request, res: Response) => {
     res.render('orders/complete', { orderId: req.query.id });
 };
