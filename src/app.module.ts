@@ -4,6 +4,14 @@ import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './entities/user.entity';
+import { Product } from './entities/product.entity';
+import { ProductOption } from './entities/product-option.entity';
+import { ProductImage } from './entities/product-image.entity';
+import { Order } from './entities/order.entity';
+import { OrderItem } from './entities/order-item.entity';
+import { Cart } from './entities/cart.entity';
+import { CartItem } from './entities/cart-item.entity';
 
 @Module({
   imports: [
@@ -47,7 +55,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         database: configService.get<string>('DB_NAME'),
 
         // 💡 엔티티 파일들은 다음 마일스톤(Issue #6)에서 옮길 때 여기에 추가될 예정입니다.
-        entities: [],
+        entities: [
+          User,
+          Product,
+          ProductOption,
+          ProductImage,
+          Order,
+          OrderItem,
+          Cart,
+          CartItem,
+        ],
 
         // 개발 환경에서는 synchronize를 켜서 테이블을 자동 동기화합니다.
         synchronize: true,
