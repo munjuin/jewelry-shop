@@ -1,4 +1,3 @@
-// src/entities/Product.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,6 +7,36 @@ import {
 } from 'typeorm';
 import { ProductImage } from './product-image.entity';
 import { ProductOption } from './product-option.entity';
+
+// 💎 다이아몬드 4C 스펙을 위한 Enum 정의 (데이터 무결성 방어)
+export enum DiamondCut {
+  EXCELLENT = 'Excellent',
+  VERY_GOOD = 'Very Good',
+  GOOD = 'Good',
+  FAIR = 'Fair',
+  POOR = 'Poor',
+}
+
+export enum DiamondColor {
+  D = 'D',
+  E = 'E',
+  F = 'F',
+  G = 'G',
+  H = 'H',
+  I = 'I',
+  J = 'J',
+}
+
+export enum DiamondClarity {
+  FL = 'FL',
+  IF = 'IF',
+  VVS1 = 'VVS1',
+  VVS2 = 'VVS2',
+  VS1 = 'VS1',
+  VS2 = 'VS2',
+  SI1 = 'SI1',
+  SI2 = 'SI2',
+}
 
 @Entity('products')
 export class Product {
@@ -33,14 +62,28 @@ export class Product {
   })
   status!: 'ON_SALE' | 'SOLD_OUT';
 
+  // --------------------------------------------------
+  // 💎 [신규 추가] 4C 스펙 (일반 쥬얼리도 있으므로 nullable: true)
+  // --------------------------------------------------
+  @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
+  carat!: number;
+
+  @Column({ type: 'enum', enum: DiamondCut, nullable: true })
+  cut!: DiamondCut;
+
+  @Column({ type: 'enum', enum: DiamondColor, nullable: true })
+  color!: DiamondColor;
+
+  @Column({ type: 'enum', enum: DiamondClarity, nullable: true })
+  clarity!: DiamondClarity;
+  // --------------------------------------------------
+
   @CreateDateColumn()
   created_at!: Date;
 
-  // 관계 설정: 하나의 상품은 여러 이미지를 가질 수 있음
   @OneToMany(() => ProductImage, (image) => image.product)
   images!: ProductImage[];
 
-  // 관계 설정: 하나의 상품은 여러 옵션(호수, 재질 등)을 가질 수 있음
   @OneToMany(() => ProductOption, (option) => option.product)
   options!: ProductOption[];
 }
