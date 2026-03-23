@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
@@ -29,6 +30,28 @@ import { AppService } from './app.service';
         // AWS_SECRET_ACCESS_KEY: Joi.string().required(),
         // AWS_REGION: Joi.string().required(),
         // AWS_BUCKET_NAME: Joi.string().required(),
+      }),
+    }),
+
+    // 2. [신규] TypeORM 비동기 모듈 연결 (DI 컨테이너 활용)
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule], // ConfigService를 쓰기 위해 주입받음
+      inject: [ConfigService], // 의존성 주입(DI)
+      // DB연결 구성 내용
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USER'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
+
+        // 💡 엔티티 파일들은 다음 마일스톤(Issue #6)에서 옮길 때 여기에 추가될 예정입니다.
+        entities: [],
+
+        // 개발 환경에서는 synchronize를 켜서 테이블을 자동 동기화합니다.
+        synchronize: true,
+        logging: true, // DB 통신 로그를 터미널에서 보기 위해 켜둡니다.
       }),
     }),
   ],
