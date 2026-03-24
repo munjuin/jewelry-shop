@@ -62,9 +62,6 @@ export class Product {
   })
   status!: 'ON_SALE' | 'SOLD_OUT';
 
-  // --------------------------------------------------
-  // 💎 [신규 추가] 4C 스펙 (일반 쥬얼리도 있으므로 nullable: true)
-  // --------------------------------------------------
   @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
   carat!: number;
 
@@ -76,7 +73,6 @@ export class Product {
 
   @Column({ type: 'enum', enum: DiamondClarity, nullable: true })
   clarity!: DiamondClarity;
-  // --------------------------------------------------
 
   @CreateDateColumn()
   created_at!: Date;
