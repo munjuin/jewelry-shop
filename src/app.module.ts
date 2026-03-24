@@ -13,6 +13,7 @@ import { OrderItem } from './entities/order-item.entity';
 import { Cart } from './entities/cart.entity';
 import { CartItem } from './entities/cart-item.entity';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { UsersModule } from './users/users.module';
         DB_NAME: Joi.string().required(),
 
         // JWT 비밀키 (나중에 Auth 도메인에서 사용)
-        // JWT_SECRET: Joi.string().required(), // 당장 없으면 에러가 나니 일단 주석 처리해둡니다.
+        JWT_SECRET: Joi.string().required(),
+        JWT_EXPIRATION_TIME: Joi.string().default('1h'),
 
         // AWS S3 설정 (나중에 업로드 로직에서 사용)
         // AWS_ACCESS_KEY_ID: Joi.string().required(),
@@ -74,6 +76,8 @@ import { UsersModule } from './users/users.module';
     }),
 
     UsersModule,
+
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
