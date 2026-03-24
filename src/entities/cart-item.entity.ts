@@ -1,11 +1,11 @@
-// src/entities/CartItem.ts
+// src/entities/cart-item.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { Cart } from './cart.entity';
 import { Product } from './product.entity';
@@ -16,21 +16,24 @@ export class CartItem {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ default: 1 })
+  @Column({ type: 'int', default: 1 })
   quantity!: number;
 
   @CreateDateColumn()
   created_at!: Date;
 
-  @ManyToOne(() => Cart, (Cart) => Cart.items, { onDelete: 'CASCADE' })
+  // 1. 어떤 장바구니에 담겼는가? (장바구니 삭제 시 아이템도 날아감)
+  @ManyToOne(() => Cart, (cart) => cart.items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'cart_id' })
-  Cart!: Cart;
+  cart!: Cart;
 
+  // 2. 어떤 상품인가?
   @ManyToOne(() => Product, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
-  Product!: Product;
+  product!: Product;
 
+  // 3. 어떤 옵션을 선택했는가? (옵션이 지워지면 장바구니에서도 빠짐)
   @ManyToOne(() => ProductOption, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_option_id' })
-  ProductOption!: ProductOption;
+  productOption!: ProductOption;
 }
