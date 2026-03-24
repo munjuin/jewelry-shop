@@ -12,6 +12,7 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Cart } from './entities/cart.entity';
 import { CartItem } from './entities/cart-item.entity';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -71,6 +72,8 @@ import { CartItem } from './entities/cart-item.entity';
         logging: true, // DB 통신 로그를 터미널에서 보기 위해 켜둡니다.
       }),
     }),
+
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
