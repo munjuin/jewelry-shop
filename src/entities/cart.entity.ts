@@ -28,6 +28,6 @@ export class Cart {
   user!: User;
 
   // 관계 설정: 장바구니 안에는 여러 개의 상품(CartItem)이 담길 수 있음 (1:N)
-  @OneToMany(() => CartItem, (CartItem) => CartItem.Cart)
+  @OneToMany(() => CartItem, (cartItem) => cartItem.cart)
   items!: CartItem[];
 }
