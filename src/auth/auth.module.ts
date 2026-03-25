@@ -6,6 +6,8 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './jwt.strategy';
+import { JwtRefreshStrategy } from './jwt-refresh.strategy';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [
@@ -29,7 +31,8 @@ import { JwtStrategy } from './jwt.strategy';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
   exports: [AuthService, JwtModule, PassportModule], // 나중에 Guard 등에서 쓸 수 있게 내보냄
 })
 export class AuthModule {}
