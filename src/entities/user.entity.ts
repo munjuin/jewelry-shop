@@ -39,6 +39,9 @@ export class User {
   })
   role!: 'USER' | 'ADMIN';
 
+  @Column({ type: 'varchar', nullable: true, select: false })
+  refresh_token!: string | null;
+
   @CreateDateColumn()
   created_at!: Date;
 }

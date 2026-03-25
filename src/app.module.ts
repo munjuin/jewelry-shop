@@ -35,6 +35,8 @@ import { AuthModule } from './auth/auth.module';
         // JWT 비밀키 (나중에 Auth 도메인에서 사용)
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRATION_TIME: Joi.string().default('1h'),
+        JWT_REFRESH_SECRET: Joi.string().required(),
+        JWT_REFRESH_EXPIRATION_TIME: Joi.string().default('14d'),
 
         // AWS S3 설정 (나중에 업로드 로직에서 사용)
         // AWS_ACCESS_KEY_ID: Joi.string().required(),
