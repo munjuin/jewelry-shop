@@ -12,7 +12,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService, // ✅ 주입
+    private readonly configService: ConfigService,
   ) {}
 
   /**
