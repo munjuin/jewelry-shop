@@ -43,8 +43,9 @@ export class UsersService {
       userData.password = await bcrypt.hash(userData.password, saltRounds);
     }
 
-    // 3. 엔티티 저장
+    // 엔티티 객체로 변환
     const newUser = this.userRepository.create(userData);
+    // 변환된 엔티티 객체를 DB에 저장
     const savedUser = await this.userRepository.save(newUser);
 
     // [캡슐화 방식] 생성자를 호출하여 바로 반환!
