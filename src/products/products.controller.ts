@@ -22,10 +22,18 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
+import { SearchProductsDto } from './dto/search-products.dto';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  // 💡 다중 필터링 검색 API (반드시 Get(':id') 보다 위에 위치!)
+  // GET /products/search?category=rings&minPrice=500000&cut=Excellent
+  @Get('search')
+  async searchProducts(@Query() searchDto: SearchProductsDto) {
+    return await this.productsService.searchProducts(searchDto);
+  }
 
   // GET /products?page=1&category=rings
   @Get()
