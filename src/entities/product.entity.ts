@@ -50,6 +50,9 @@ export class Product {
   @Index() // 단일 컬럼 인덱스도 필요한 경우 추가
   category!: string;
 
+  @Column({ length: 255 }) // 👈 name 속성이 돌아왔습니다!
+  name!: string;
+
   @Column({ type: 'int' })
   @Index()
   price!: number;
