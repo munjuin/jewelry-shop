@@ -5,11 +5,11 @@ import {
   Column,
   CreateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { ProductImage } from './product-image.entity';
 import { ProductOption } from './product-option.entity';
 
-// 💎 다이아몬드 4C 스펙을 위한 Enum 정의 (데이터 무결성 방어)
 export enum DiamondCut {
   EXCELLENT = 'Excellent',
   VERY_GOOD = 'Very Good',
@@ -40,21 +40,22 @@ export enum DiamondClarity {
 }
 
 @Entity('products')
+// 💡 복합 인덱스 설정: category와 id를 묶어서 성능 최적화
+@Index('idx_product_category_id', ['category', 'id'])
 export class Product {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  name!: string;
+  @Column({ length: 100 })
+  @Index() // 단일 컬럼 인덱스도 필요한 경우 추가
+  category!: string;
 
-  @Column({ default: 0 })
+  @Column({ type: 'int' })
+  @Index()
   price!: number;
 
   @Column({ type: 'text', nullable: true })
   description!: string;
-
-  @Column({ nullable: true })
-  category!: string;
 
   @Column({
     type: 'varchar',
