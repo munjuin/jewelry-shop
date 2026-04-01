@@ -23,6 +23,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
+import { CursorPaginationDto } from './dto/pagination.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -129,5 +130,10 @@ export class ProductsController {
     @Body() createOptionDto: CreateProductOptionDto,
   ) {
     return await this.productsService.createOption(productId, createOptionDto);
+  }
+
+  @Get()
+  async findAll(@Query() paginationDto: CursorPaginationDto) {
+    return await this.productsService.getProductsWithCursor(paginationDto);
   }
 }
