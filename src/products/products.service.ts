@@ -12,6 +12,7 @@ import { ProductImage } from 'src/entities/product-image.entity';
 import { ProductOption } from 'src/entities/product-option.entity';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
+import { CursorPaginationDto } from './dto/pagination.dto';
 
 @Injectable()
 export class ProductsService {
@@ -224,5 +225,42 @@ export class ProductsService {
 
     // 완성된 쿼리를 실행하여 결과 배열 반환
     return await query.getMany();
+  }
+
+  async getProductsWithCursor(dto: CursorPaginationDto) {
+    const { cursor, limit } = dto;
+
+    const query = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect(
+        'product.images',
+        'image',
+        'image.is_thumbnail = :isThumbnail',
+        { isThumbnail: true },
+      )
+      .orderBy('product.id', 'DESC') // ID 기준 내림차순 (최신순)
+      .take(limit + 1); // 다음 페이지 존재 여부 확인을 위해 하나 더 가져옴
+
+    if (cursor) {
+      // 커서보다 작은 ID를 가진 데이터만 조회
+      query.andWhere('product.id < :cursor', { cursor });
+    }
+
+    const items = await query.getMany();
+
+    // 다음 페이지 존재 여부 확인
+    const hasNextPage = items.length > limit;
+
+    // 실제 반환할 데이터 (마지막 하나는 제외)
+    const data = hasNextPage ? items.slice(0, limit) : items;
+
+    // 다음 요청에서 사용할 새로운 커서 ID
+    const nextCursor = hasNextPage ? data[data.length - 1].id : null;
+
+    return {
+      data,
+      nextCursor,
+      hasNextPage,
+    };
   }
 }
