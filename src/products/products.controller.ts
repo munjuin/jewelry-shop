@@ -24,10 +24,20 @@ import { extname } from 'path';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
 import { CursorPaginationDto } from './dto/pagination.dto';
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  // 💡 메인 배너 캐싱 적용
+  @UseInterceptors(CacheInterceptor) // 자동 캐싱 인터셉터
+  @CacheKey('main_bestsellers') // Redis에 저장될 키 이름
+  @CacheTTL(60) // 이 API만 특별히 1분간 캐싱
+  @Get('bestsellers')
+  async getBestsellers() {
+    return await this.productsService.getBestsellers();
+  }
 
   // 💡 다중 필터링 검색 API (반드시 Get(':id') 보다 위에 위치!)
   // GET /products/search?category=rings&minPrice=500000&cut=Excellent

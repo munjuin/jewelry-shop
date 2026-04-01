@@ -263,4 +263,15 @@ export class ProductsService {
       hasNextPage,
     };
   }
+
+  // 💡 메인 배너용 베스트셀러 상품 조회 (캐싱 타겟)
+  async getBestsellers() {
+    console.log('--- DB에서 베스트셀러 조회 중... (Heavy Query) ---');
+    return await this.productRepository.find({
+      where: { status: 'ON_SALE' },
+      order: { price: 'DESC' }, // 실제로는 주문량순이겠지만, 일단 비싼 순으로!
+      take: 5, // 상위 5개만
+      relations: ['images'],
+    });
+  }
 }

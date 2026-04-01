@@ -17,9 +17,18 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
+import { redisStore } from 'cache-manager-redis-yet';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
+    CacheModule.register({
+      isGlobal: true,
+      store: redisStore,
+      host: 'localhost',
+      port: 6379,
+      ttl: 600, // 기본 캐시 유지 시간 (초) - 10분
+    }),
     // ConfigModule을 전역(Global)으로 설정하여 어디서든 환경변수를 꺼내 쓸 수 있게 합니다.
     ConfigModule.forRoot({
       isGlobal: true,
@@ -77,6 +86,7 @@ import { OrdersModule } from './orders/orders.module';
         // 개발 환경에서는 synchronize를 켜서 테이블을 자동 동기화합니다.
         synchronize: true,
         logging: true, // DB 통신 로그를 터미널에서 보기 위해 켜둡니다.
+        dropSchema: false,
       }),
     }),
 
