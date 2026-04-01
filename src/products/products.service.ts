@@ -11,6 +11,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductImage } from 'src/entities/product-image.entity';
 import { ProductOption } from 'src/entities/product-option.entity';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
+import { SearchProductsDto } from './dto/search-products.dto';
 
 @Injectable()
 export class ProductsService {
@@ -150,5 +151,78 @@ export class ProductsService {
 
     // 3. DB 저장
     return await this.productOptionRepository.save(newOption);
+  }
+
+  // 💡 다중 필터링 동적 검색 (QueryBuilder)
+  async searchProducts(dto: SearchProductsDto) {
+    const {
+      keyword,
+      category,
+      minPrice,
+      maxPrice,
+      minCarat,
+      maxCarat,
+      cut,
+      color,
+      clarity,
+    } = dto;
+
+    // 1. QueryBuilder 시작 ('product'라는 별칭 사용)
+    // 썸네일 이미지도 목록에 보여줘야 하므로 같이 JOIN 합니다.
+    const query = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect(
+        'product.images',
+        'image',
+        'image.is_thumbnail = :isThumbnail',
+        { isThumbnail: true },
+      );
+
+    // 2. 동적 WHERE 조건 추가 (데이터가 들어왔을 때만 쿼리에 이어 붙임)
+    if (keyword) {
+      // 이름이나 설명에 키워드가 포함되어 있는지 (LIKE 검색)
+      query.andWhere(
+        '(product.name LIKE :keyword OR product.description LIKE :keyword)',
+        { keyword: `%${keyword}%` },
+      );
+    }
+
+    if (category) {
+      query.andWhere('product.category = :category', { category });
+    }
+
+    if (minPrice !== undefined) {
+      query.andWhere('product.price >= :minPrice', { minPrice });
+    }
+
+    if (maxPrice !== undefined) {
+      query.andWhere('product.price <= :maxPrice', { maxPrice });
+    }
+
+    if (minCarat !== undefined) {
+      query.andWhere('product.carat >= :minCarat', { minCarat });
+    }
+
+    if (maxCarat !== undefined) {
+      query.andWhere('product.carat <= :maxCarat', { maxCarat });
+    }
+
+    if (cut) {
+      query.andWhere('product.cut = :cut', { cut });
+    }
+
+    if (color) {
+      query.andWhere('product.color = :color', { color });
+    }
+
+    if (clarity) {
+      query.andWhere('product.clarity = :clarity', { clarity });
+    }
+
+    // 3. 정렬 및 실행 (최신순)
+    query.orderBy('product.created_at', 'DESC');
+
+    // 완성된 쿼리를 실행하여 결과 배열 반환
+    return await query.getMany();
   }
 }
