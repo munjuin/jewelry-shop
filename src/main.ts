@@ -2,11 +2,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ValidationPipe } from '@nestjs/common';
-import { join } from 'path';
-import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -17,11 +15,6 @@ async function bootstrap() {
       transform: true, // 클라이언트가 보낸 텍스트 데이터를 DTO의 타입(Number, Boolean 등)에 맞게 자동 변환
     }),
   );
-
-  // 💡 클라이언트가 '/uploads' 경로로 요청하면 서버의 실제 'uploads' 폴더 안의 파일을 보여줌
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
 
   await app.listen(process.env.PORT ?? 3000);
 }
