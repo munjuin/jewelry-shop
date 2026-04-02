@@ -6,12 +6,15 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Unique,
 } from 'typeorm';
 import { Cart } from './cart.entity';
 import { Product } from './product.entity';
 import { ProductOption } from './product-option.entity';
 
 @Entity('cart_items')
+// 장바구니 내 동일 상품 + 옵션 중복 적재 방지 제약
+@Unique(['cart', 'product', 'productOption'])
 export class CartItem {
   @PrimaryGeneratedColumn()
   id!: number;
