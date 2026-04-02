@@ -1,24 +1,16 @@
 {
   "compilerOptions": {
-    /* 1. Module & Target: CJS 스타일 유지를 위해 Node16 사용 */
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "commonjs",
     "target": "ES2023",
-
-    /* 2. rootDir: 가이드 지침대로 src로 명시 (dist 구조 꼬임 방지) */
+    
+    /* 💡 [핵심] 빌드 결과물이 무조건 dist/main.js 로 나오게 강제 고정! */
     "rootDir": "src",
     "outDir": "./dist",
-
-    /* 3. baseUrl & paths: 가이드 지침대로 baseUrl 제거 후 paths 경로 수정 */
-    // "baseUrl": "./", <- 삭제됨
+    
     "paths": {
       "src/*": ["./src/*"]
     },
-
-    /* 4. types: 가이드 지침대로 node 타입을 명시적으로 추가 (매우 중요!) */
-    "types": ["node"], 
-
-    /* 5. NestJS 필수 설정 및 기타 */
+    
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
@@ -26,12 +18,11 @@
     "declaration": true,
     "removeComments": true,
     "sourceMap": true,
-    "incremental": true,
+    /* 💡 incremental: true 삭제 (유령 캐시 원천 차단) */
     "skipLibCheck": true,
     "strict": true,
     "noImplicitAny": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolvePackageJsonExports": true
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "old_src", "test"]
