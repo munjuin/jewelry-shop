@@ -1,10 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/cart/dto/cart.service.ts
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Cart } from '../entities/cart.entity';
 import { CartItem } from '../entities/cart-item.entity';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { ProductOption } from 'src/entities/product-option.entity';
 
 @Injectable()
 export class CartService {
@@ -13,7 +19,6 @@ export class CartService {
     private readonly cartRepository: Repository<Cart>,
     @InjectRepository(CartItem)
     private readonly cartItemRepository: Repository<CartItem>,
-    // 💡 트랜잭션 처리를 위해 DataSource 주입
     private readonly dataSource: DataSource,
   ) {}
 
@@ -48,16 +53,32 @@ export class CartService {
     };
   }
 
-  // 1. 장바구니 아이템 추가 (트랜잭션 적용)
+  // 1. 장바구니 아이템 추가 (안전성 강화)
   async addToCart(userId: number, dto: AddToCartDto) {
     const qty = dto.quantity || 1;
 
-    // TypeORM DataSource 트랜잭션 시작
     return await this.dataSource.transaction(async (manager) => {
+      // [개선 포인트 1] 상품 및 옵션이 실제로 존재하는지, 유효한 매핑인지 사전 검증
+      const productOption = await manager.findOne(ProductOption, {
+        where: { id: dto.product_option_id, product: { id: dto.product_id } },
+      });
+
+      if (!productOption) {
+        throw new NotFoundException(
+          '요청하신 상품 또는 옵션을 찾을 수 없습니다.',
+        );
+      }
+
+      // [개선 포인트 2] 옵션 재고 확인 (선택 사항이지만 이커머스 핵심 로직)
+      if (productOption.stock_quantity < qty) {
+        throw new BadRequestException('해당 옵션의 재고가 부족합니다.');
+      }
+
       // 1) 유저의 장바구니 찾기 (없으면 생성)
       let cart = await manager.findOne(Cart, {
         where: { user: { id: userId } },
       });
+
       if (!cart) {
         cart = manager.create(Cart, { user: { id: userId } });
         await manager.save(cart);

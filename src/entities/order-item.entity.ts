@@ -1,4 +1,4 @@
-// src/entities/OrderItem.ts
+// src/entities/order-item.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,

@@ -1,3 +1,4 @@
+// src/products/products.service.ts
 import {
   BadRequestException,
   Injectable,
