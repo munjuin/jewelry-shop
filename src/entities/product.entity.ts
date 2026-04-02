@@ -39,6 +39,16 @@ export enum DiamondClarity {
   SI2 = 'SI2',
 }
 
+// 소수점을 문자열 대신 숫자로 변환하는 헬퍼 클래스
+class ColumnNumericTransformer {
+  to(data: number): number {
+    return data;
+  }
+  from(data: string): number {
+    return parseFloat(data);
+  }
+}
+
 @Entity('products')
 // 💡 복합 인덱스 설정: category와 id를 묶어서 성능 최적화
 @Index('idx_product_category_id', ['category', 'id'])
@@ -67,7 +77,13 @@ export class Product {
   })
   status!: 'ON_SALE' | 'SOLD_OUT';
 
-  @Column({ type: 'decimal', precision: 4, scale: 2, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    nullable: true,
+    transformer: new ColumnNumericTransformer(), // 💡 DB 데이터를 변환하여 반환
+  })
   carat!: number;
 
   @Column({ type: 'enum', enum: DiamondCut, nullable: true })
