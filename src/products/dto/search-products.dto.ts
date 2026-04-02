@@ -1,3 +1,4 @@
+// src/products/search-products.dto.ts
 import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer'; // 💡 중요: 쿼리스트링(문자열)을 숫자로 자동 변환해줍니다.
 
