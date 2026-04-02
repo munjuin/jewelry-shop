@@ -1,27 +1,38 @@
 {
   "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "resolvePackageJsonExports": true,
+    /* 1. Module & Target: CJS 스타일 유지를 위해 Node16 사용 */
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ES2023",
+
+    /* 2. rootDir: 가이드 지침대로 src로 명시 (dist 구조 꼬임 방지) */
+    "rootDir": "src",
+    "outDir": "./dist",
+
+    /* 3. baseUrl & paths: 가이드 지침대로 baseUrl 제거 후 paths 경로 수정 */
+    // "baseUrl": "./", <- 삭제됨
+    "paths": {
+      "src/*": ["./src/*"]
+    },
+
+    /* 4. types: 가이드 지침대로 node 타입을 명시적으로 추가 (매우 중요!) */
+    "types": ["node"], 
+
+    /* 5. NestJS 필수 설정 및 기타 */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,
     "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
     "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
     "strict": true,
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolvePackageJsonExports": true
   },
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "old_src", "test"]
 }
