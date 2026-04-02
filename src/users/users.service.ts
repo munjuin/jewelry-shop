@@ -1,7 +1,11 @@
 // src/users/users.service.ts
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { UserResponseDto } from './dto/user-response.dto';
 import * as bcrypt from 'bcrypt';
@@ -29,28 +33,44 @@ export class UsersService {
     return user ? new UserResponseDto(user) : null;
   }
 
-  // 회원가입 (비밀번호 암호화 + DTO 반환)
+  // 회원가입 로직 강화
   async createUser(userData: Partial<CreateUserDto>): Promise<UserResponseDto> {
-    // 1. 중복 가입 방지
+    // 1. 1차 체크 (일반적인 상황에서의 빠른 응답)
     const existingUser = await this.findByEmail(userData.email!);
     if (existingUser) {
       throw new ConflictException('이미 존재하는 이메일입니다.');
     }
 
-    // 2. 비밀번호 단방향 암호화
+    // 2. 비밀번호 암호화
     if (userData.password) {
       const saltRounds = 10;
       userData.password = await bcrypt.hash(userData.password, saltRounds);
     }
 
-    // 엔티티 객체로 변환
-    const newUser = this.userRepository.create(userData);
-    // 변환된 엔티티 객체를 DB에 저장
-    const savedUser = await this.userRepository.save(newUser);
+    try {
+      const newUser = this.userRepository.create(userData);
+      const savedUser = await this.userRepository.save(newUser);
+      return new UserResponseDto(savedUser);
+    } catch (error) {
+      // 💡 [핵심 트러블슈팅] DB 단의 유니크 제약 조건 위반 에러 처리
+      // PostgreSQL의 유니크 위반 에러 코드는 '23505'입니다.
+      if (error instanceof QueryFailedError) {
+        // 💡 [핵심] driverError가 any이므로, 우리가 필요한 'code'가 있는 타입으로 단언(Assertion)합니다.
+        // 이렇게 하면 'Unsafe assignment'와 'Unsafe member access' 에러가 모두 사라집니다.
+        const dbError = error.driverError as { code?: string };
 
-    // [캡슐화 방식] 생성자를 호출하여 바로 반환!
-    // 서비스는 "어떤 필드가 옮겨지는지" 일일이 몰라도 됩니다.
-    return new UserResponseDto(savedUser);
+        if (dbError.code === '23505') {
+          throw new ConflictException(
+            '이미 등록된 이메일 주소입니다. (동시 요청 방어)',
+          );
+        }
+      }
+
+      // 그 외 알 수 없는 에러는 기존처럼 500 에러 처리
+      throw new InternalServerErrorException(
+        '서버 오류로 인해 회원가입에 실패했습니다.',
+      );
+    }
   }
 
   // [추가] Refresh Token을 DB에 저장(또는 삭제)합니다.
