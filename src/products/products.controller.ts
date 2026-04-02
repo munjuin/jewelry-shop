@@ -47,18 +47,10 @@ export class ProductsController {
     return await this.productsService.searchProducts(searchDto);
   }
 
-  // GET /products?page=1&category=rings
+  // 💡 [핵심 트러블슈팅] 중복되었던 @Get()을 하나로 통합하고 Cursor Pagination을 기본으로 사용
   @Get()
-  async getProducts(
-    // @Query() 데코레이터로 req.query 값을 추출합니다.
-    @Query('page') page?: string,
-    @Query('category') category?: string,
-  ) {
-    // 문자열로 들어온 page를 숫자로 변환 (기본값 1)
-    const pageNumber = page ? parseInt(page, 10) : 1;
-    const categoryValue = category || 'all';
-
-    return await this.productsService.findAll(pageNumber, categoryValue);
+  async getProductsList(@Query() paginationDto: CursorPaginationDto) {
+    return await this.productsService.getProductsWithCursor(paginationDto);
   }
 
   // GET /products/:id
@@ -141,10 +133,5 @@ export class ProductsController {
     @Body() createOptionDto: CreateProductOptionDto,
   ) {
     return await this.productsService.createOption(productId, createOptionDto);
-  }
-
-  @Get()
-  async findAll(@Query() paginationDto: CursorPaginationDto) {
-    return await this.productsService.getProductsWithCursor(paginationDto);
   }
 }
