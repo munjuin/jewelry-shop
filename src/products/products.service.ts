@@ -184,7 +184,7 @@ export class ProductsService {
     if (keyword) {
       // 이름이나 설명에 키워드가 포함되어 있는지 (LIKE 검색)
       query.andWhere(
-        '(product.name LIKE :keyword OR product.description LIKE :keyword)',
+        '(product.name ILIKE :keyword OR product.description ILIKE :keyword)',
         { keyword: `%${keyword}%` },
       );
     }

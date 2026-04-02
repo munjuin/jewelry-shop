@@ -54,6 +54,9 @@ CREATE INDEX IF NOT EXISTS session_expire_idx ON session (expire);
 -- 3. 상품 관리 (Products)
 -- ==========================================
 
+-- PostgreSQL의 pg_trgm 확장 모듈을 활성화합니다.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- 3-1. 상품 (Products) 테이블 - 부모 테이블
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
@@ -64,6 +67,11 @@ CREATE TABLE products (
     status VARCHAR(20) DEFAULT 'ON_SALE' CHECK (status IN ('ON_SALE', 'SOLD_OUT')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 💡 [해결] name과 description 컬럼에 Trigram 기반 GIN 복합 인덱스를 생성합니다.
+-- 이제 양방향 와일드카드(LIKE '%keyword%') 검색 시에도 초고속 인덱스 스캔을 수행합니다.
+CREATE INDEX idx_products_name_trgm ON products USING GIN (name gin_trgm_ops);
+CREATE INDEX idx_products_desc_trgm ON products USING GIN (description gin_trgm_ops);
 
 -- 3-2. 상품 이미지 (Product Images) - 다중 이미지 지원
 CREATE TABLE product_images (
