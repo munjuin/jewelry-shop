@@ -2,6 +2,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -53,12 +54,11 @@ export class CartService {
     };
   }
 
-  // 1. 장바구니 아이템 추가 (안전성 강화)
+  // 1. 장바구니 아이템 추가 (안전성 강화 및 타입 에러 해결)
   async addToCart(userId: number, dto: AddToCartDto) {
     const qty = dto.quantity || 1;
 
     return await this.dataSource.transaction(async (manager) => {
-      // [개선 포인트 1] 상품 및 옵션이 실제로 존재하는지, 유효한 매핑인지 사전 검증
       const productOption = await manager.findOne(ProductOption, {
         where: { id: dto.product_option_id, product: { id: dto.product_id } },
       });
@@ -69,22 +69,43 @@ export class CartService {
         );
       }
 
-      // [개선 포인트 2] 옵션 재고 확인 (선택 사항이지만 이커머스 핵심 로직)
       if (productOption.stock_quantity < qty) {
         throw new BadRequestException('해당 옵션의 재고가 부족합니다.');
       }
 
-      // 1) 유저의 장바구니 찾기 (없으면 생성)
+      // 1) 유저의 장바구니 찾기 (타입: Cart | null)
       let cart = await manager.findOne(Cart, {
         where: { user: { id: userId } },
       });
 
       if (!cart) {
-        cart = manager.create(Cart, { user: { id: userId } });
-        await manager.save(cart);
+        try {
+          cart = manager.create(Cart, { user: { id: userId } });
+          await manager.save(cart);
+        } catch (error: unknown) {
+          // 💡 [수정 1] any 대신 unknown을 쓰고, 타입 단언으로 안전하게 접근합니다.
+          const dbError = error as { code?: string };
+
+          if (dbError.code === '23505') {
+            cart = await manager.findOne(Cart, {
+              where: { user: { id: userId } },
+            });
+          } else {
+            throw error;
+          }
+        }
       }
 
-      // 2) 장바구니에 동일한 상품+옵션이 있는지 확인
+      // 💡 [수정 2] TypeScript의 걱정을 덜어주는 '타입 가드(Type Guard)'
+      // 이 시점에도 cart가 없다면 서버 에러로 간주하여 실행을 멈춥니다.
+      // 이 코드를 통과하면 TypeScript는 "아, 이제 cart는 절대 null이 아니구나!" 라고 안심합니다.
+      if (!cart) {
+        throw new InternalServerErrorException(
+          '장바구니를 생성하거나 확인할 수 없습니다.',
+        );
+      }
+
+      // 2) 장바구니에 동일한 상품+옵션이 있는지 확인 (이제 cart.id 사용 가능)
       let cartItem = await manager.findOne(CartItem, {
         where: {
           cart: { id: cart.id },
