@@ -152,15 +152,23 @@ export class CartService {
     };
   }
 
-  // 3. 수량 변경
+  // 3. 수량 변경 (재고 검증 로직 추가)
   async updateCartItem(userId: number, itemId: number, dto: UpdateCartItemDto) {
     const cartItem = await this.cartItemRepository.findOne({
       where: { id: itemId, cart: { user: { id: userId } } },
+      // 💡 [핵심] 현재 잔여 재고를 확인하기 위해 productOption을 반드시 조인(JOIN)하여 가져와야 합니다.
       relations: ['product', 'productOption'],
     });
 
     if (!cartItem)
       throw new NotFoundException('장바구니 항목을 찾을 수 없습니다.');
+
+    // 💡 [이슈 1 해결] 변경하려는 수량이 옵션의 실제 재고보다 많은지 검사하는 방어 로직 추가
+    if (cartItem.productOption.stock_quantity < dto.quantity) {
+      throw new BadRequestException(
+        `재고가 부족합니다. (잔여 재고: ${cartItem.productOption.stock_quantity}개)`,
+      );
+    }
 
     cartItem.quantity = dto.quantity;
     await this.cartItemRepository.save(cartItem);
