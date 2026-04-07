@@ -4,36 +4,56 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
-// 1. 에러 응답의 구조를 미리 정의합니다. (인터페이스)
 interface ErrorResponseObject {
-  message?: string | string[]; // NestJS 에러는 문자열 배열일 수도 있습니다.
-  [key: string]: any; // 다른 필드가 더 있을 수도 있음을 명시
+  message?: string | string[];
+  [key: string]: any;
 }
 
-@Catch(HttpException)
+// 💡 1. 괄호 안을 비워서(HttpException 삭제) 애플리케이션의 '모든' 예외를 다 잡도록 합니다.
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: HttpException, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
+    // 💡 2. 어떤 에러가 올지 모르니 unknown으로 받습니다.
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-    const status = exception.getStatus();
 
-    const res = exception.getResponse();
+    // 💡 3. 에러의 종류를 판별합니다.
+    const isHttpException = exception instanceof HttpException;
 
-    // 2. 타입을 any 대신 위에서 만든 인터페이스로 지정합니다.
-    const message =
-      typeof res === 'object' && res !== null
-        ? (res as ErrorResponseObject).message || JSON.stringify(res)
-        : res;
+    // 우리가 아는 에러면 그 상태 코드를 쓰고, 모르는 서버 에러면 500을 줍니다.
+    const status = isHttpException
+      ? exception.getStatus()
+      : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    // 우리가 아는 에러면 그 메시지를 쓰고, 모르는 에러면 보안을 위해 숨깁니다.
+    let message: string | string[] =
+      '서버 내부 에러가 발생했습니다. (Internal Server Error)';
+
+    if (isHttpException) {
+      const res = exception.getResponse();
+      message =
+        typeof res === 'object' && res !== null
+          ? (res as ErrorResponseObject).message || JSON.stringify(res)
+          : res;
+    } else {
+      // 💡 [중요] 500 에러일 경우, 클라이언트에게는 숨기지만 서버 터미널에는 반드시 로그를 남겨야 우리가 디버깅을 할 수 있습니다!
+      console.error(
+        `[🚨 Unhandled Exception] ${request.method} ${request.url}`,
+      );
+      console.error(exception);
+    }
+
+    // 4. 일관된 응답 포맷으로 클라이언트에게 반환
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: message, // 이제 빨간 줄이 사라집니다!
+      message: message,
     });
   }
 }
