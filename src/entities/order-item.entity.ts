@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Order } from './order.entity';
 import { Product } from './product.entity';
+import { ProductOption } from './product-option.entity'; // 💡 [추가됨]
 
 @Entity('order_items')
 export class OrderItem {
@@ -31,4 +32,9 @@ export class OrderItem {
   @ManyToOne(() => Product, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'product_id' })
   product!: Product;
+
+  // 💡 [이슈 2 해결] 원본 옵션 ID를 저장할 FK 추가 (옵션 삭제 시 SET NULL 처리)
+  @ManyToOne(() => ProductOption, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'product_option_id' })
+  productOption!: ProductOption;
 }
