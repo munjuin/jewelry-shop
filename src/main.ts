@@ -20,7 +20,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: true, // 개발 단계에서는 모든 도메인 허용 (true), 실무에서는 'http://localhost:3001' 처럼 프론트엔드 주소 명시
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
     credentials: true, // 쿠키나 인증 헤더를 교환하려면 true로 설정해야 합니다.
   });
 
