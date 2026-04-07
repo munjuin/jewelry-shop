@@ -46,7 +46,7 @@ export class OrdersService {
     return { cartItems, totalProductPrice, deliveryFee, finalPrice };
   }
 
-  // 2. 주문 생성 (🔥 핵심 트랜잭션)
+  // 2. 주문 생성 (🔥 핵심 트랜잭션 - 비관적 락 적용)
   async createOrder(userId: number, dto: CreateOrderDto) {
     return await this.dataSource.transaction(async (manager) => {
       const cart = await manager.findOne(Cart, {
@@ -58,17 +58,41 @@ export class OrdersService {
         throw new BadRequestException('장바구니가 비어있습니다.');
       }
 
-      // 재고 검증 및 총액 계산
+      // 💡 [데드락 방지] 트랜잭션 교착 상태를 막기 위해 옵션 ID 기준으로 오름차순 정렬
+      const sortedItems = cart.items.sort(
+        (a, b) => a.productOption.id - b.productOption.id,
+      );
+
       let totalAmount = 0;
-      for (const item of cart.items) {
-        if (item.productOption.stock_quantity < item.quantity) {
-          // 트랜잭션 내부에서 예외를 던지면 즉시 ROLLBACK 됩니다.
-          throw new BadRequestException(
-            `재고 부족: [${item.productOption.option_name}] 상품의 재고가 부족합니다.`,
+
+      // 💡 [이슈 1 해결] 재고 검증 및 차감 (비관적 락 적용)
+      for (const item of sortedItems) {
+        // SELECT ... FOR UPDATE 구문으로 해당 옵션 행(Row)을 트랜잭션 종료 시까지 잠금
+        const productOption = await manager.findOne(ProductOption, {
+          where: { id: item.productOption.id },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!productOption) {
+          throw new NotFoundException(
+            `상품 옵션을 찾을 수 없습니다. (ID: ${item.productOption.id})`,
           );
         }
+
+        // 락이 걸린 안전한 상태에서 실제 재고 비교
+        if (productOption.stock_quantity < item.quantity) {
+          throw new BadRequestException(
+            `재고 부족: [${productOption.option_name}] 상품의 재고가 부족합니다. (잔여: ${productOption.stock_quantity}개)`,
+          );
+        }
+
+        // 재고가 충분하다면 총액 누적
         totalAmount +=
-          (item.product.price + item.productOption.extra_price) * item.quantity;
+          (item.product.price + productOption.extra_price) * item.quantity;
+
+        // 재고 즉시 차감 및 DB 반영 (트랜잭션 내부이므로 안전함)
+        productOption.stock_quantity -= item.quantity;
+        await manager.save(productOption);
       }
 
       const deliveryFee = totalAmount < 100000 ? 3000 : 0;
@@ -85,23 +109,19 @@ export class OrdersService {
       });
       await manager.save(order);
 
-      // 2) 주문 상세 내역(스냅샷) 저장 및 재고 차감
-      for (const item of cart.items) {
+      // 2) 주문 상세 내역(스냅샷) 저장
+      for (const item of sortedItems) {
         const priceSnapshot =
           item.product.price + item.productOption.extra_price;
 
         const orderItem = manager.create(OrderItem, {
           order: { id: order.id },
           product: { id: item.product.id },
-          option_snapshot: item.productOption.option_name, // 결제 시점 옵션명 박제
+          option_snapshot: item.productOption.option_name,
           quantity: item.quantity,
-          price_snapshot: priceSnapshot, // 결제 시점 가격 박제
+          price_snapshot: priceSnapshot,
         });
         await manager.save(orderItem);
-
-        // 재고 차감
-        item.productOption.stock_quantity -= item.quantity;
-        await manager.save(item.productOption);
       }
 
       // 3) 장바구니 비우기
@@ -118,12 +138,12 @@ export class OrdersService {
   async getOrderList(userId: number) {
     return await this.dataSource.getRepository(Order).find({
       where: { user: { id: userId } },
-      relations: ['items', 'items.product'], // 필요시 상세 항목도 함께 응답
+      relations: ['items', 'items.product'],
       order: { created_at: 'DESC' },
     });
   }
 
-  // 4. 주문 취소 (🔥 취소 트랜잭션)
+  // 4. 주문 취소 (기존 스냅샷 기반 로직 유지 - 이슈 2에서 수정 예정)
   async cancelOrder(userId: number, orderId: number) {
     return await this.dataSource.transaction(async (manager) => {
       const order = await manager.findOne(Order, {
@@ -141,12 +161,11 @@ export class OrdersService {
 
       // 2) 재고 복구 (스냅샷을 이용한 역추적)
       for (const item of order.items) {
-        // 상품이 삭제되지 않고 남아있다면 옵션을 찾아 재고를 복구합니다.
         if (item.product) {
           const option = await manager.findOne(ProductOption, {
             where: {
               product: { id: item.product.id },
-              option_name: item.option_snapshot, // 스냅샷 이름으로 옵션 역추적
+              option_name: item.option_snapshot,
             },
           });
 
