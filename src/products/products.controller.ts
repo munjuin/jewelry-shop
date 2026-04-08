@@ -25,6 +25,7 @@ import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
 import { CursorPaginationDto } from './dto/pagination.dto';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { GetPresignedUrlsRequestDto } from './dto/get-presigned-url.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -138,5 +139,35 @@ export class ProductsController {
     @Body() createOptionDto: CreateProductOptionDto,
   ) {
     return await this.productsService.createOption(productId, createOptionDto);
+  }
+
+  // 💡 [New] 1. S3 업로드용 일회성 티켓(Presigned URL) 발급 API
+  @Post('presigned-urls')
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async getPresignedUrls(@Body() requestDto: GetPresignedUrlsRequestDto) {
+    // 여러 장의 이미지를 위해 여러 개의 URL을 병렬로 발급
+    const urls = await Promise.all(
+      requestDto.files.map((file) =>
+        this.productsService['awsS3Service'].getPresignedUrl(
+          'products',
+          file.filename,
+          file.contentType,
+        ),
+      ),
+    );
+    return { urls };
+  }
+
+  // 💡 [New] 2. 클라이언트가 S3 직접 업로드 완료 후 호출하는 DB 저장 API
+  @Post(':id/images/confirm')
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async confirmImageUpload(
+    @Param('id', ParseIntPipe) productId: number,
+    // Body로 {"publicUrls": ["https://s3...", "https://s3..."]} 형태를 받음
+    @Body('publicUrls') publicUrls: string[],
+  ) {
+    return await this.productsService.saveImageUrlsToDB(productId, publicUrls);
   }
 }
