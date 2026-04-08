@@ -50,7 +50,8 @@
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -71,6 +72,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
     "copyfiles": "^2.4.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
