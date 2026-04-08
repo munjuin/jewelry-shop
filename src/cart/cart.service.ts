@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Cart } from '../entities/cart.entity';
 import { CartItem } from '../entities/cart-item.entity';
 import { AddToCartDto } from './dto/add-to-cart.dto';
@@ -214,5 +214,23 @@ export class CartService {
     const totals = await this.getCartTotals(userId);
 
     return { message: '삭제되었습니다.', totals };
+  }
+
+  // 💡 [New] 트랜잭션 내부에서 안전하게 장바구니를 조회하는 메서드
+  async getCartForCheckout(userId: number, manager?: EntityManager) {
+    // manager가 넘어오면 트랜잭션 내부 조회를, 없으면 일반 조회를 수행
+    const repo = manager ? manager.getRepository(Cart) : this.cartRepository;
+    return await repo.findOne({
+      where: { user: { id: userId } },
+      relations: ['items', 'items.product', 'items.productOption'],
+    });
+  }
+
+  // 💡 [New] 트랜잭션 내부에서 장바구니를 비우는 메서드
+  async emptyCart(userId: number, manager: EntityManager) {
+    const cart = await this.getCartForCheckout(userId, manager);
+    if (cart && cart.items.length > 0) {
+      await manager.remove(CartItem, cart.items); // 받은 지휘봉(manager)으로 삭제!
+    }
   }
 }
