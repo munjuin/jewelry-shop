@@ -6,11 +6,12 @@ import { ProductsService } from './products.service';
 import { Product } from '../entities/product.entity'; // 경로 확인 필요
 import { ProductImage } from '../entities/product-image.entity';
 import { ProductOption } from '../entities/product-option.entity';
+import { AwsS3Service } from 'src/common/aws/aws-s3.service';
 
 @Module({
   // 이 모듈에서 Product, ProductImage, ProductOption 레포지토리를 사용하겠다고 선언합니다.
   imports: [TypeOrmModule.forFeature([Product, ProductImage, ProductOption])],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, AwsS3Service],
 })
 export class ProductsModule {}

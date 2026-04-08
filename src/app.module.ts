@@ -51,11 +51,11 @@ import { CacheModule } from '@nestjs/cache-manager';
         JWT_REFRESH_SECRET: Joi.string().required(),
         JWT_REFRESH_EXPIRATION_TIME: Joi.string().default('14d'),
 
-        // AWS S3 설정 (나중에 업로드 로직에서 사용)
-        // AWS_ACCESS_KEY_ID: Joi.string().required(),
-        // AWS_SECRET_ACCESS_KEY: Joi.string().required(),
-        // AWS_REGION: Joi.string().required(),
-        // AWS_BUCKET_NAME: Joi.string().required(),
+        // 💡 [수정됨] AWS S3 설정 주석 해제 및 필수값 강제
+        AWS_ACCESS_KEY_ID: Joi.string().required(),
+        AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+        AWS_REGION: Joi.string().required(),
+        AWS_BUCKET_NAME: Joi.string().required(),
       }),
     }),
 

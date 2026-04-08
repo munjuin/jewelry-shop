@@ -20,8 +20,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
 import { CursorPaginationDto } from './dto/pagination.dto';
@@ -96,17 +95,23 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @UseInterceptors(
     FilesInterceptor('images', 5, {
-      // 'images'라는 키로 최대 5장까지 허용
-      storage: diskStorage({
-        destination: './uploads/products', // 파일이 저장될 물리적 경로
-        filename: (req, file, callback) => {
-          // 파일명 중복을 막기 위해 현재 시간 + 랜덤 문자열로 파일명 생성
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, `${uniqueSuffix}${ext}`);
-        },
-      }),
+      // 로컬디스크에 저장하는 방식
+      // storage: diskStorage({
+      //   destination: './uploads/products', // 파일이 저장될 물리적 경로
+      //   filename: (req, file, callback) => {
+      //     // 파일명 중복을 막기 위해 현재 시간 + 랜덤 문자열로 파일명 생성
+      //     const uniqueSuffix =
+      //       Date.now() + '-' + Math.round(Math.random() * 1e9);
+      //     const ext = extname(file.originalname);
+      //     callback(null, `${uniqueSuffix}${ext}`);
+      //   },
+      // }),
+
+      // 메모리 스토리지에 저장하는 방식
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 💡 [이슈 B 해결] OOM 방어를 위해 파일 하나당 5MB로 엄격히 제한
+      },
       fileFilter: (req, file, callback) => {
         // 이미지 파일만 허용하는 보안 필터
         if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {

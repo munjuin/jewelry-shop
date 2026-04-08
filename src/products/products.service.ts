@@ -14,6 +14,7 @@ import { ProductOption } from 'src/entities/product-option.entity';
 import { CreateProductOptionDto } from './dto/create-product-option.dto';
 import { SearchProductsDto } from './dto/search-products.dto';
 import { CursorPaginationDto } from './dto/pagination.dto';
+import { AwsS3Service } from '../common/aws/aws-s3.service';
 
 @Injectable()
 export class ProductsService {
@@ -26,6 +27,8 @@ export class ProductsService {
 
     @InjectRepository(ProductOption)
     private readonly productOptionRepository: Repository<ProductOption>,
+
+    private readonly awsS3Service: AwsS3Service,
   ) {}
 
   // 1. 상품 목록 조회 (페이지네이션 및 카테고리 필터링)
@@ -107,33 +110,33 @@ export class ProductsService {
     return { message: `상품 ID ${id}이(가) 성공적으로 삭제되었습니다.` };
   }
 
-  // 4. 상품 이미지 DB 저장 로직
+  // 💡 3. 상품 이미지 저장 로직 (타입 에러 완벽 해결 및 Promise.all 최적화)
   async saveProductImages(productId: number, files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException('업로드할 이미지 파일이 없습니다.');
     }
 
-    const product = await this.findOne(productId); // 상품이 존재하는지 먼저 확인
+    const product = await this.findOne(productId);
 
-    const savedImages = [];
-
-    // 업로드된 파일 배열을 순회하며 DB 엔티티로 만듭니다.
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const isThumbnail = i === 0; // 첫 번째 올린 이미지를 썸네일로 지정 (비즈니스 로직에 따라 변경 가능)
+    // Promise.all과 map을 사용하여 비동기 업로드를 완벽한 병렬로 처리합니다.
+    const uploadPromises = files.map(async (file, i) => {
+      // 이제 this.awsS3Service가 완벽하게 인식되며 Unsafe 에러가 사라집니다!
+      const s3Url = await this.awsS3Service.uploadFileToS3('products', file);
 
       const newImage = this.productImageRepository.create({
-        image_url: `/uploads/products/${file.filename}`, // 프론트엔드에서 접근할 가상 경로
-        is_thumbnail: isThumbnail,
-        product: product, // 관계 설정
+        image_url: s3Url,
+        is_thumbnail: i === 0,
+        product: product,
       });
 
-      const savedImage = await this.productImageRepository.save(newImage);
-      savedImages.push(savedImage);
-    }
+      return this.productImageRepository.save(newImage);
+    });
+
+    // 모든 파일의 S3 업로드와 DB 저장이 끝날 때까지 한 번에 기다립니다.
+    const savedImages = await Promise.all(uploadPromises);
 
     return {
-      message: `${files.length}개의 이미지가 성공적으로 업로드되었습니다.`,
+      message: `${files.length}개의 이미지가 S3에 성공적으로 업로드되었습니다.`,
       images: savedImages,
     };
   }
