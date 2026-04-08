@@ -278,4 +278,32 @@ export class ProductsService {
       relations: ['images'],
     });
   }
+
+  // 💡 클라이언트가 직접 S3에 업로드한 후, 반환받은 URL들만 DB에 저장하는 가벼운 로직
+  async saveImageUrlsToDB(productId: number, publicUrls: string[]) {
+    if (!publicUrls || publicUrls.length === 0) {
+      throw new BadRequestException('저장할 이미지 URL이 없습니다.');
+    }
+
+    // 상품 존재 여부 확인
+    const product = await this.findOne(productId);
+
+    // 전달받은 URL 배열을 순회하며 DB 엔티티로 매핑 후 병렬 저장
+    const savedImagesPromises = publicUrls.map(async (url, i) => {
+      const newImage = this.productImageRepository.create({
+        image_url: url,
+        is_thumbnail: i === 0, // 첫 번째 URL을 썸네일로 지정
+        product: product,
+      });
+
+      return this.productImageRepository.save(newImage);
+    });
+
+    const savedImages = await Promise.all(savedImagesPromises);
+
+    return {
+      message: `${publicUrls.length}개의 이미지 URL이 DB에 성공적으로 연결되었습니다.`,
+      images: savedImages,
+    };
+  }
 }
