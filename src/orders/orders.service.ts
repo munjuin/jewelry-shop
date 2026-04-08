@@ -8,13 +8,16 @@ import { DataSource } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { Cart } from '../entities/cart.entity';
-import { CartItem } from '../entities/cart-item.entity';
 import { ProductOption } from '../entities/product-option.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CartService } from 'src/cart/cart.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly cartService: CartService,
+  ) {}
 
   // 1. 주문서 작성 데이터 조회 (결제 전 프리뷰)
   async getCheckoutInfo(userId: number) {
@@ -49,10 +52,7 @@ export class OrdersService {
   // 2. 주문 생성 (🔥 핵심 트랜잭션 - 비관적 락 적용)
   async createOrder(userId: number, dto: CreateOrderDto) {
     return await this.dataSource.transaction(async (manager) => {
-      const cart = await manager.findOne(Cart, {
-        where: { user: { id: userId } },
-        relations: ['items', 'items.product', 'items.productOption'],
-      });
+      const cart = await this.cartService.getCartForCheckout(userId, manager);
 
       if (!cart || cart.items.length === 0) {
         throw new BadRequestException('장바구니가 비어있습니다.');
@@ -122,7 +122,7 @@ export class OrdersService {
       }
 
       // 3) 장바구니 비우기
-      await manager.remove(CartItem, cart.items);
+      await this.cartService.emptyCart(userId, manager);
 
       return {
         message: '주문이 성공적으로 완료되었습니다.',
